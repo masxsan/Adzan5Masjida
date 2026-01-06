@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Jadwal Sholat TV Masjid</title>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
   <script src="/_sdk/element_sdk.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
@@ -49,6 +50,14 @@
             border-bottom: 1px solid rgba(212, 175, 55, 0.05);
         }
         
+        @keyframes scrollUp {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(-50%); }
+        }
+        .scroll-active {
+            animation: scrollUp linear infinite;
+        }
+        
         .pulse {
             animation: pulse 2s infinite;
         }
@@ -58,22 +67,123 @@
             50% { opacity: 0.7; }
         }
         
+        @keyframes glowSoft {
+            0%, 100% { box-shadow: 0 0 18px rgba(212, 175, 55, 0.45); transform: scale(1.05); }
+            50% { box-shadow: 0 0 28px rgba(212, 175, 55, 0.75); transform: scale(1.07); }
+        }
+        .glow-pulse {
+            animation: glowSoft 2.5s ease-in-out infinite;
+        }
+        
+        @keyframes softPulse1s {
+            0%, 100% { box-shadow: 0 0 22px rgba(212, 175, 55, 0.9), 0 0 44px rgba(212, 175, 55, 0.5); }
+            50% { box-shadow: 0 0 10px rgba(212, 175, 55, 0.3), 0 0 20px rgba(212, 175, 55, 0.15); }
+        }
+        .soft-pulse-1s {
+            animation: softPulse1s 1s ease-in-out infinite;
+            will-change: box-shadow;
+            border: 2px solid rgba(212, 175, 55, 0.9);
+        }
+        
         @keyframes fadeIn {
             0% { opacity: 0; filter: blur(2px); }
             100% { opacity: 1; filter: none; }
         }
     </style>
-  <style>@view-transition { navigation: auto; }</style>
+  <style>
+        /* --- ACTIVATION SCREEN STYLES --- */
+        #activation-screen {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(135deg, #0d2818, #000);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        .activation-card {
+            background: white;
+            color: #333;
+            padding: 2.5rem;
+            border-radius: 1rem;
+            width: 100%;
+            max-width: 500px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+            border-top: 5px solid #d4af37;
+            text-align: center;
+        }
+
+        .input-group { margin-bottom: 1.5rem; text-align: left; }
+        .input-label { display: block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem; color: #333; }
+        .input-field {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #ddd;
+            border-radius: 0.5rem;
+            font-size: 1rem;
+            transition: border-color 0.2s;
+            background: #fff;
+            color: #333;
+        }
+        .input-field:focus { outline: none; border-color: #1a4d2e; }
+        
+        .btn-activate {
+            background: #1a4d2e;
+            color: white;
+            border: none;
+            width: 100%;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .btn-activate:hover { background: #0f2e1b; }
+        .error-msg { color: #ef4444; font-size: 0.9rem; margin-top: 0.5rem; display: none; }
+        .hidden { display: none !important; }
+    </style>
+    <style>@view-transition { navigation: auto; }</style>
   <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
  </head>
  <body class="h-full w-full">
+    <!-- ACTIVATION SCREEN -->
+    <div id="activation-screen">
+        <div class="activation-card">
+            <h2 style="font-size: 1.8rem; margin-bottom: 0.5rem; color: #1a4d2e; font-weight: 800;">Aktivasi Perangkat</h2>
+            <p style="margin-bottom: 2rem; color: #666;">Silakan masukkan Kode Aktivasi dan Data Master untuk memulai.</p>
+            
+            <div class="input-group">
+                <label class="input-label">Kode Aktivasi</label>
+                <input type="text" id="act-code" class="input-field" placeholder="ALM-XXXX-XXXX" style="text-transform: uppercase;">
+            </div>
+
+            <div class="input-group">
+                <label class="input-label">Upload File Master (.json)</label>
+                <input type="file" id="act-file" class="input-field" accept=".json" style="padding: 0.5rem;">
+            </div>
+
+            <!-- Hidden manual input -->
+            <div class="input-group" style="display: none;">
+                <label class="input-label">Atau Paste Data Manual</label>
+                <textarea id="act-data" class="input-field" placeholder='Paste data JSON disini jika tidak upload file...' style="min-height: 80px;"></textarea>
+                <div style="font-size: 0.75rem; color: #888; margin-top: 4px;">*Data diperlukan untuk validasi offline</div>
+            </div>
+
+            <div id="act-error" class="error-msg">Kode tidak valid atau tidak ditemukan di data master.</div>
+
+            <button onclick="attemptActivation()" class="btn-activate">AKTIFKAN PERANGKAT</button>
+        </div>
+    </div>
  <div id="main-container" class="h-full w-full gradient-bg text-white overflow-auto" style="height: 100vh; display: grid; grid-template-rows: 14vh 12vh calc(50vh + 1cm) calc(24vh - 1cm); overflow: hidden;"><!-- Header Banner -->
    <div id="header-banner" class="gold-border" style="background: linear-gradient(90deg, #1a4d2e 0%, #2d6b42 50%, #1a4d2e 100%); padding: 16px 24px; display: flex; justify-content: space-between; align-items: center;"><!-- Jam Digital -->
     <div style="flex: 1;">
      <div id="current-time" style="font-size: 36px; font-weight: 800; color: white; letter-spacing: 2px;">
       00:00:00
      </div>
-     <div id="current-date" style="font-size: 12px; color: #d4af37; margin-top: 2px;">
+     <div id="current-date" style="font-size: 18px; color: white; margin-top: 2px;">
       Senin, 1 Januari 2024
      </div>
     </div><!-- Nama Masjid -->
@@ -81,14 +191,14 @@
      <div id="mosque-name" style="font-size: 35px; font-weight: 800; color: #d4af37; text-transform: uppercase; letter-spacing: 3px; margin-bottom: 4px;">
       MASJID AL-IKHLAS
      </div>
-     <div id="mosque-address" style="font-size: 15px; color: white; opacity: 0.9;">
+     <div id="mosque-address" style="font-size: 20px; color: white; opacity: 0.9; font-weight: 700;">
       Jl. Contoh No. 123, Jakarta Selatan
      </div><button id="open-settings-btn" style="margin-top: 8px; background: rgba(212, 175, 55, 0.2); border: 2px solid #d4af37; border-radius: 50%; width: 36px; height: 36px; color: #d4af37; cursor: pointer; transition: all 0.3s ease; display: inline-flex; align-items: center; justify-content: center;" onmouseover="this.style.background='#d4af37'; this.style.color='#1a4d2e'; this.style.transform='rotate(90deg)'" onmouseout="this.style.background='rgba(212, 175, 55, 0.2)'; this.style.color='#d4af37'; this.style.transform='rotate(0deg)'">
       <svg style="width: 20px; height: 20px;" fill="currentColor" viewbox="0 0 20 20"><path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" />
       </svg></button>
     </div><!-- Countdown -->
     <div style="flex: 1; text-align: right;">
-     <div style="font-size: 11px; color: #d4af37; margin-bottom: 2px;">
+     <div style="font-size: 11px; color: white; margin-bottom: 2px;">
       MENUJU
      </div>
      <div id="next-prayer-name" style="font-size: 16px; font-weight: 700; color: white;">
@@ -100,7 +210,7 @@
     </div>
    </div><!-- Kartu Waktu Sholat -->
   <div style="padding: 16px 24px; height: 100%; overflow: hidden;">
-    <div id="prayer-cards" style="display: grid; grid-template-columns: repeat(8, 1fr); gap: 8px;"><!-- Cards will be inserted here -->
+    <div id="prayer-cards" style="display: grid; grid-template-columns: repeat(8, 1fr); gap: 8px; min-height: 100px;"><!-- Cards will be inserted here -->
     </div>
    </div><!-- Body Tengah (4 Kolom) -->
   <div id="main-content-grid" style="padding: 0 24px 0 24px; display: grid; grid-template-columns: 0.75fr 0.75fr 2.8fr 0.75fr; gap: 12px; height: 100%; overflow: hidden;"><!-- Kolom Kiri 1+2: Foto Takmir dalam satu kontainer -->
@@ -194,59 +304,71 @@
      </div>
    </div><!-- Body Bawah (3 Kolom) -->
   <div style="padding: 0 24px 0 24px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; height: 100%; margin-top: -60px;"><!-- Donatur -->
-    <div class="gold-border shadow-custom" style="background: rgba(255, 255, 255, 0.05); border-radius: 12px; padding: 12px; height: calc(75% + 80px); min-height: 0; overflow: hidden; border: 2px solid #d4af37;">
-     <div style="font-size: 21.875px; font-weight: 700; color: #d4af37; margin-bottom: 2px; text-align: center;">
+    <div class="gold-border shadow-custom" style="background: rgba(255, 255, 255, 0.05); border-radius: 12px; padding: 12px; height: calc(75% + 80px); min-height: 0; overflow: hidden; border: 2px solid #d4af37; display: flex; flex-direction: column;">
+     <div style="font-size: 21.875px; font-weight: 700; color: #d4af37; margin-bottom: 2px; text-align: center; flex-shrink: 0;">
       DONATUR
      </div>
-     <table style="width: 100%; font-size: 15.625px;">
+     <table style="width: 100%; font-size: 15.625px; flex-shrink: 0; margin-bottom: 4px; table-layout: fixed;">
       <thead>
        <tr style="border-bottom: 2px solid #d4af37;">
-        <th style="padding: 2px; text-align: left; color: #d4af37;">Nama</th>
-        <th style="padding: 2px; text-align: right; color: #d4af37;">Nominal</th>
+        <th style="padding: 2px; text-align: left; color: #d4af37; width: 65%;">Nama</th>
+        <th style="padding: 2px; text-align: right; color: #d4af37; width: 35%;">Nominal</th>
        </tr>
       </thead>
-      <tbody id="donatur-table">
-       <tr class="table-row">
-        <td style="padding: 2px;">Budi Santoso</td>
-        <td style="padding: 2px; text-align: right; font-weight: 600;">Rp 500.000</td>
-       </tr>
-       <tr class="table-row">
-        <td style="padding: 2px;">Siti Aminah</td>
-        <td style="padding: 2px; text-align: right; font-weight: 600;">Rp 300.000</td>
-       </tr>
-       <tr class="table-row">
-        <td style="padding: 2px;">Hamba Allah</td>
-        <td style="padding: 2px; text-align: right; font-weight: 600;">Rp 1.000.000</td>
-       </tr>
-      </tbody>
      </table>
+     <div id="donatur-scroll-container" style="overflow: hidden; position: relative; flex: 1;">
+         <div id="donatur-scroll-content" style="position: absolute; width: 100%;">
+             <table style="width: 100%; font-size: 15.625px; table-layout: fixed;">
+              <tbody id="donatur-table">
+               <tr class="table-row">
+                <td style="padding: 2px; width: 65%;">Budi Santoso</td>
+                <td style="padding: 2px; text-align: right; font-weight: 600; width: 35%;">Rp 500.000</td>
+               </tr>
+               <tr class="table-row">
+                <td style="padding: 2px; width: 65%;">Siti Aminah</td>
+                <td style="padding: 2px; text-align: right; font-weight: 600; width: 35%;">Rp 300.000</td>
+               </tr>
+               <tr class="table-row">
+                <td style="padding: 2px; width: 65%;">Hamba Allah</td>
+                <td style="padding: 2px; text-align: right; font-weight: 600; width: 35%;">Rp 1.000.000</td>
+               </tr>
+              </tbody>
+             </table>
+         </div>
+     </div>
     </div><!-- Keuangan -->
-    <div class="gold-border shadow-custom" style="background: rgba(255, 255, 255, 0.05); border-radius: 12px; padding: 12px; height: calc(75% + 80px); min-height: 0; overflow: hidden; border: 2px solid #d4af37;">
-     <div style="font-size: 21.875px; font-weight: 700; color: #d4af37; margin-bottom: 2px; text-align: center;">
+    <div class="gold-border shadow-custom" style="background: rgba(255, 255, 255, 0.05); border-radius: 12px; padding: 12px; height: calc(75% + 80px); min-height: 0; overflow: hidden; border: 2px solid #d4af37; display: flex; flex-direction: column;">
+     <div style="font-size: 21.875px; font-weight: 700; color: #d4af37; margin-bottom: 2px; text-align: center; flex-shrink: 0;">
       KEUANGAN MASJID
      </div>
-     <table style="width: 100%; font-size: 15.625px;">
+     <table style="width: 100%; font-size: 15.625px; flex-shrink: 0; margin-bottom: 4px; table-layout: fixed;">
       <thead>
        <tr style="border-bottom: 2px solid #d4af37;">
-        <th style="padding: 2px; text-align: left; color: #d4af37;">Keterangan</th>
-        <th style="padding: 2px; text-align: right; color: #d4af37;">Jumlah</th>
+        <th style="padding: 2px; text-align: left; color: #d4af37; width: 60%;">Keterangan</th>
+        <th style="padding: 2px; text-align: right; color: #d4af37; width: 40%;">Jumlah</th>
        </tr>
       </thead>
-      <tbody id="finance-table">
-       <tr class="table-row">
-        <td style="padding: 2px;">Penerimaan</td>
-        <td style="padding: 2px; text-align: right; font-weight: 600; color: #4ade80;">Rp 2.500.000</td>
-       </tr>
-       <tr class="table-row">
-        <td style="padding: 2px;">Pengeluaran</td>
-        <td style="padding: 2px; text-align: right; font-weight: 600; color: #f87171;">Rp 1.200.000</td>
-       </tr>
-       <tr style="border-top: 2px solid rgba(212, 175, 55, 0.05);">
-        <td style="padding: 2px; font-weight: 700;">Saldo</td>
-        <td style="padding: 2px; text-align: right; font-weight: 700; color: #d4af37;">Rp 1.300.000</td>
-       </tr>
-      </tbody>
      </table>
+     <div id="finance-scroll-container" style="overflow: hidden; position: relative; flex: 1;">
+         <div id="finance-scroll-content" style="position: absolute; width: 100%;">
+             <table style="width: 100%; font-size: 15.625px; table-layout: fixed;">
+                 <tbody id="finance-table">
+                   <tr class="table-row">
+                    <td style="padding: 2px;">Penerimaan</td>
+                    <td style="padding: 2px; text-align: right; font-weight: 600; color: #4ade80;">Rp 2.500.000</td>
+                   </tr>
+                   <tr class="table-row">
+                    <td style="padding: 2px;">Pengeluaran</td>
+                    <td style="padding: 2px; text-align: right; font-weight: 600; color: #f87171;">Rp 1.200.000</td>
+                   </tr>
+                   <tr style="border-top: 2px solid rgba(212, 175, 55, 0.05);">
+                    <td style="padding: 2px; font-weight: 700;">Saldo</td>
+                    <td style="padding: 2px; text-align: right; font-weight: 700; color: #d4af37;">Rp 1.300.000</td>
+                   </tr>
+                 </tbody>
+             </table>
+         </div>
+     </div>
     </div><!-- Petugas -->
     <div class="gold-border shadow-custom" style="background: rgba(255, 255, 255, 0.05); border-radius: 12px; padding: 12px; height: calc(75% + 80px); min-height: 0; overflow: hidden; border: 2px solid #d4af37;">
      <div style="font-size: 21.875px; font-weight: 700; color: #d4af37; margin-bottom: 2px; text-align: center;">
@@ -296,7 +418,8 @@
       <h2 style="font-size: 28px; font-weight: 800; color: #d4af37; margin: 0;">⚙️ PANEL PENGATURAN ADMIN</h2><button id="close-modal-btn" style="background: rgba(248, 113, 113, 0.2); border: 2px solid #f87171; border-radius: 8px; padding: 8px 16px; color: #f87171; font-weight: 700; cursor: pointer;" onmouseover="this.style.background='#f87171'; this.style.color='white'" onmouseout="this.style.background='rgba(248, 113, 113, 0.2)'; this.style.color='#f87171'">✕ TUTUP</button>
      </div><!-- Tabs Navigation -->
      <div id="tabs-nav" style="display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap;"><button class="tab-btn" data-tab="identitas" style="background: #d4af37; color: #1a4d2e; border: none; border-radius: 8px; padding: 10px 16px; font-weight: 700; cursor: pointer; transition: all 0.3s;">Identitas Masjid</button> <button class="tab-btn" data-tab="background" style="background: rgba(255, 255, 255, 0.1); color: white; border: 2px solid #d4af37; border-radius: 8px; padding: 10px 16px; font-weight: 700; cursor: pointer; transition: all 0.3s;">Template Background</button> <button class="tab-btn" data-tab="waktu" style="background: rgba(255, 255, 255, 0.1); color: white; border: 2px solid #d4af37; border-radius: 8px; padding: 10px 16px; font-weight: 700; cursor: pointer; transition: all 0.3s;">Waktu Sholat</button> <button class="tab-btn" data-tab="visibility" style="background: rgba(255, 255, 255, 0.1); color: white; border: 2px solid #d4af37; border-radius: 8px; padding: 10px 16px; font-weight: 700; cursor: pointer; transition: all 0.3s;">Tampilan Waktu</button> <button class="tab-btn" data-tab="mode-pengumuman" style="background: rgba(255, 255, 255, 0.1); color: white; border: 2px solid #d4af37; border-radius: 8px; padding: 10px 16px; font-weight: 700; cursor: pointer; transition: all 0.3s;">Mode Pengumuman</button> <button class="tab-btn" data-tab="pengumuman-text" style="background: rgba(255, 255, 255, 0.1); color: white; border: 2px solid #d4af37; border-radius: 8px; padding: 10px 16px; font-weight: 700; cursor: pointer; transition: all 0.3s;">Edit Teks Pengumuman</button> <button class="tab-btn" data-tab="slideshow" style="background: rgba(255, 255, 255, 0.1); color: white; border: 2px solid #d4af37; border-radius: 8px; padding: 10px 16px; font-weight: 700; cursor: pointer; transition: all 0.3s;">Slideshow Pengumuman</button> <button class="tab-btn" data-tab="info" style="background: rgba(255, 255, 255, 0.1); color: white; border: 2px solid #d4af37; border-radius: 8px; padding: 10px 16px; font-weight: 700; cursor: pointer; transition: all 0.3s;">Info Masjid</button> <button class="tab-btn" data-tab="donatur" style="background: rgba(255, 255, 255, 0.1); color: white; border: 2px solid #d4af37; border-radius: 8px; padding: 10px 16px; font-weight: 700; cursor: pointer; transition: all 0.3s;">Donatur</button> <button class="tab-btn" data-tab="keuangan" style="background: rgba(255, 255, 255, 0.1); color: white; border: 2px solid #d4af37; border-radius: 8px; padding: 10px 16px; font-weight: 700; cursor: pointer; transition: all 0.3s;">Keuangan</button> <button class="tab-btn" data-tab="petugas" style="background: rgba(255, 255, 255, 0.1); color: white; border: 2px solid #d4af37; border-radius: 8px; padding: 10px 16px; font-weight: 700; cursor: pointer; transition: all 0.3s;">Petugas Sholat</button> <button class="tab-btn" data-tab="takmir" style="background: rgba(255, 255, 255, 0.1); color: white; border: 2px solid #d4af37; border-radius: 8px; padding: 10px 16px; font-weight: 700; cursor: pointer; transition: all 0.3s;">Foto Takmir</button> <button class="tab-btn" data-tab="audio" style="background: rgba(255, 255, 255, 0.1); color: white; border: 2px solid #d4af37; border-radius: 8px; padding: 10px 16px; font-weight: 700; cursor: pointer; transition: all 0.3s;">Suara Adzan</button> <button class="tab-btn" data-tab="beep" style="background: rgba(255, 255, 255, 0.1); color: white; border: 2px solid #d4af37; border-radius: 8px; padding: 10px 16px; font-weight: 700; cursor: pointer; transition: all 0.3s;">Beep Iqomah</button>
-     </div><!-- Tab Content Container -->
+  <button class="tab-btn" data-tab="backup" style="background: rgba(255, 255, 255, 0.1); color: white; border: 2px solid #d4af37; border-radius: 8px; padding: 10px 16px; font-weight: 700; cursor: pointer; transition: all 0.3s;">Backup & Restore</button>
+    </div><!-- Tab Content Container -->
      <div id="tab-content" style="background: rgba(255, 255, 255, 0.05); border-radius: 12px; padding: 24px;"><!-- Content will be dynamically loaded here -->
      </div>
     </div>
@@ -321,7 +444,7 @@
             { name: "Dhuha", time: "06:15", visible: false },
             { name: "Dzuhur", time: "12:05", visible: true },
             { name: "Ashar", time: "15:20", visible: true },
-            { name: "Magrib", time: "18:10", visible: true },
+            { name: "Maghrib", time: "18:10", visible: true },
             { name: "Isya", time: "19:25", visible: true }
         ];
 
@@ -343,11 +466,25 @@
             { name: "Nur Aisyah", amount: "150.000" }
         ];
 
+        let prayerScheduleData = [];
+        // Load data on startup
+        try {
+            const savedData = localStorage.getItem('prayerScheduleData');
+            if (savedData) {
+                prayerScheduleData = JSON.parse(savedData);
+                // checkDailyUpdate will be called by updateClock or we can call it here if we trust hoisting
+                // setTimeout(() => checkDailyUpdate(), 0); // Safe way
+            }
+        } catch (e) {
+            console.error("Error loading schedule:", e);
+        }
+
         let financeData = {
             income: "2.500.000",
             expense: "1.200.000",
             todayIncome: "500.000",
             weeklyIncome: "3.000.000",
+            fridayIncome: "1.500.000",
             lastExpense: "200.000"
         };
 
@@ -399,13 +536,120 @@
         let adzanAudio = null; // Audio element
         let beepAudioUrl = ""; // URL or data URL for iqomah beep audio
         let beepAudio = null; // Beep audio element
+        let adzanVolume = 1.0;
+        let beepVolume = 1.0;
+        let adzanMaxMinutes = 5;
+        let adzanStopTimeout = null;
+        let infoVisibilityConfig = { capacity: true, facilities: true, iqomah: true, contact: true, ramadhan: true, qurban: true, rekening: true };
+        let infoAutoRotate = false;
+        let infoRotateIntervalSec = 5;
+        let infoRotateIndex = 0;
+        let infoRotateTimer = null;
         let transparencyLevel = 0.2; // Default transparency
+
+        // Centralized Storage Management
+        const STORAGE_KEY = 'masjid_app_data_v1';
+
+        function saveToLocalStorage() {
+            const dataToSave = {
+                prayerTimes,
+                infoMasjidData,
+                donatorsData,
+                financeData,
+                officersData,
+                takmirData,
+                leftColumnMode,
+                leftColumnImageUrl,
+                slideshowData,
+                backgroundSettings,
+                currentMosqueName,
+                currentMosqueAddress,
+                currentAnnouncement,
+                announcementMode,
+                adzanAudioUrl,
+                beepAudioUrl,
+                adzanVolume,
+                beepVolume,
+                adzanMaxMinutes,
+                infoVisibilityConfig,
+                infoAutoRotate,
+                infoRotateIntervalSec,
+                infoRotateIndex,
+                transparencyLevel,
+                prayerScheduleData
+            };
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
+                // Also save individual keys for backward compatibility or specific access if needed, 
+                // but relying on one big object is safer for full restore.
+                // However, prayerScheduleData was already using its own key, let's keep it sync.
+                localStorage.setItem('prayerScheduleData', JSON.stringify(prayerScheduleData)); 
+                console.log('Data saved successfully');
+            } catch (e) {
+                console.error('Failed to save data:', e);
+                showNotification('⚠️ Gagal menyimpan data (Storage penuh?)');
+            }
+        }
+
+        function loadFromLocalStorage() {
+            try {
+                const savedData = localStorage.getItem(STORAGE_KEY);
+                if (savedData) {
+                    const parsed = JSON.parse(savedData);
+                    
+                    // Restore variable by variable if exists
+                    if(parsed.prayerTimes) prayerTimes = parsed.prayerTimes;
+                    if(parsed.infoMasjidData) infoMasjidData = { ...infoMasjidData, ...parsed.infoMasjidData };
+                    if(parsed.donatorsData) donatorsData = parsed.donatorsData;
+                    if(parsed.financeData) financeData = { ...financeData, ...parsed.financeData };
+                    if(parsed.officersData) officersData = parsed.officersData;
+                    if(parsed.takmirData) takmirData = parsed.takmirData;
+                    if(parsed.leftColumnMode) leftColumnMode = parsed.leftColumnMode;
+                    if(parsed.leftColumnImageUrl) leftColumnImageUrl = parsed.leftColumnImageUrl;
+                    if(parsed.slideshowData) slideshowData = parsed.slideshowData;
+                    if(parsed.backgroundSettings) backgroundSettings = parsed.backgroundSettings;
+                    
+                    if(parsed.currentMosqueName) currentMosqueName = parsed.currentMosqueName;
+                    if(parsed.currentMosqueAddress) currentMosqueAddress = parsed.currentMosqueAddress;
+                    if(parsed.currentAnnouncement) currentAnnouncement = parsed.currentAnnouncement;
+                    if(parsed.announcementMode) announcementMode = parsed.announcementMode;
+                    
+                    if(parsed.adzanAudioUrl) adzanAudioUrl = parsed.adzanAudioUrl;
+                    if(parsed.beepAudioUrl) beepAudioUrl = parsed.beepAudioUrl;
+                    if(parsed.adzanVolume !== undefined) adzanVolume = parsed.adzanVolume;
+                    if(parsed.beepVolume !== undefined) beepVolume = parsed.beepVolume;
+                    if(parsed.adzanMaxMinutes !== undefined) adzanMaxMinutes = parsed.adzanMaxMinutes;
+                    if(parsed.infoVisibilityConfig) infoVisibilityConfig = parsed.infoVisibilityConfig;
+                    if(parsed.infoAutoRotate !== undefined) infoAutoRotate = parsed.infoAutoRotate;
+                    if(parsed.infoRotateIntervalSec !== undefined) infoRotateIntervalSec = parsed.infoRotateIntervalSec;
+                    if(parsed.infoRotateIndex !== undefined) infoRotateIndex = parsed.infoRotateIndex;
+                    if(parsed.transparencyLevel) transparencyLevel = parsed.transparencyLevel;
+                    
+                    if(parsed.prayerScheduleData) prayerScheduleData = parsed.prayerScheduleData;
+                    
+                    console.log('Data restored successfully');
+                } else {
+                    // Try to load legacy prayerScheduleData if main storage not found
+                    const legacySchedule = localStorage.getItem('prayerScheduleData');
+                    if (legacySchedule) {
+                        prayerScheduleData = JSON.parse(legacySchedule);
+                    }
+                }
+            } catch (e) {
+                console.error('Failed to load data:', e);
+            }
+        }
+
+        // Initialize Data
+        loadFromLocalStorage();
+        let lastCheckedDateStr = "";
 
         function updateClock() {
             const now = new Date();
             const hours = String(now.getHours()).padStart(2, '0');
             const minutes = String(now.getMinutes()).padStart(2, '0');
             const seconds = String(now.getSeconds()).padStart(2, '0');
+            
             document.getElementById('current-time').textContent = `${hours}:${minutes}:${seconds}`;
             
             const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
@@ -414,21 +658,77 @@
             const date = now.getDate();
             const monthName = months[now.getMonth()];
             const year = now.getFullYear();
-            document.getElementById('current-date').textContent = `${dayName}, ${date} ${monthName} ${year}`;
+            
+            // Hijri Date
+            let hijriDate = "";
+            try {
+                hijriDate = new Intl.DateTimeFormat('id-ID', { calendar: 'islamic-umalqura', day: 'numeric', month: 'long', year: 'numeric' }).format(now);
+            } catch (e) {
+                // Fallback if islamic-umalqura is not supported
+                hijriDate = new Intl.DateTimeFormat('id-ID', { calendar: 'islamic', day: 'numeric', month: 'long', year: 'numeric' }).format(now);
+            }
+            
+            // Remove "tahun" word if present and ensure "H" is not doubled if the format already includes it
+            hijriDate = hijriDate.replace('tahun', '').trim();
+            if (hijriDate.endsWith(' H')) {
+                 hijriDate = hijriDate.substring(0, hijriDate.length - 2);
+            }
+
+            document.getElementById('current-date').textContent = `${dayName}, ${date} ${monthName} ${year} M / ${hijriDate} H`;
+
+            // Check for daily update if date changed
+            const currentDateStr = now.toDateString();
+            if (lastCheckedDateStr !== currentDateStr) {
+                lastCheckedDateStr = currentDateStr;
+                if (typeof checkDailyUpdate === 'function') {
+                    checkDailyUpdate();
+                }
+            }
         }
 
         function findNextPrayer() {
             const now = new Date();
             const currentTime = now.getHours() * 60 + now.getMinutes();
             
+            // Helper to check visibility with backward compatibility
+            const isVisible = (p) => {
+                if (p.visible !== undefined) return p.visible;
+                // Fallback for old data: hide specific non-obligatory times
+                return !["Imsak", "Syuruq", "Dhuha"].includes(p.name);
+            };
+
+            // Helper to parse time string safely
+            const parseTime = (timeStr) => {
+                if (!timeStr || typeof timeStr !== 'string') return null;
+                // Handle HH:MM or HH.MM
+                const parts = timeStr.replace('.', ':').split(':');
+                if (parts.length < 2) return null;
+                const h = parseInt(parts[0]);
+                const m = parseInt(parts[1]);
+                if (isNaN(h) || isNaN(m)) return null;
+                return [h, m];
+            };
+
+            // Find next VISIBLE prayer today
             for (let i = 0; i < prayerTimes.length; i++) {
-                const [hours, minutes] = prayerTimes[i].time.split(':').map(Number);
+                if (!prayerTimes[i] || !isVisible(prayerTimes[i])) continue;
+
+                const timeParts = parseTime(prayerTimes[i].time);
+                if (!timeParts) continue;
+
+                const [hours, minutes] = timeParts;
                 const prayerMinutes = hours * 60 + minutes;
                 
                 if (currentTime < prayerMinutes) {
                     return i;
                 }
             }
+            
+            // If no visible prayer left today, return first visible prayer (for tomorrow)
+            for (let i = 0; i < prayerTimes.length; i++) {
+                if (prayerTimes[i] && isVisible(prayerTimes[i])) return i;
+            }
+            
             return 0;
         }
 
@@ -440,30 +740,88 @@
         let iqomahMinutesLeft = 0;
 
         function updateCountdown() {
-            const now = new Date();
-            const nextPrayerIndex = findNextPrayer();
-            const nextPrayer = prayerTimes[nextPrayerIndex];
-            
-            document.getElementById('next-prayer-name').textContent = nextPrayer.name.toUpperCase();
-            
-            const [hours, minutes] = nextPrayer.time.split(':').map(Number);
-            let targetTime = new Date();
-            targetTime.setHours(hours, minutes, 0, 0);
-            
-            if (targetTime < now) {
-                targetTime.setDate(targetTime.getDate() + 1);
+            try {
+                const now = new Date();
+                const nextPrayerIndex = findNextPrayer();
+                // Ensure nextPrayerIndex is valid
+                if (nextPrayerIndex < 0 || !prayerTimes[nextPrayerIndex]) return;
+
+                const nextPrayer = prayerTimes[nextPrayerIndex];
+                
+                let prayerName = nextPrayer.name ? nextPrayer.name.toUpperCase() : "SHOLAT";
+                // Change "DZUHUR" to "JUMAT" if it's Friday
+                if (now.getDay() === 5 && prayerName === 'DZUHUR') {
+                    prayerName = 'JUMAT';
+                }
+                const nameEl = document.getElementById('next-prayer-name');
+                if (nameEl) nameEl.textContent = prayerName;
+                
+                // Safe time parsing
+                let hours, minutes;
+                if (nextPrayer.time && typeof nextPrayer.time === 'string') {
+                    const parts = nextPrayer.time.replace('.', ':').split(':');
+                    if (parts.length >= 2) {
+                        hours = parseInt(parts[0]);
+                        minutes = parseInt(parts[1]);
+                    }
+                }
+
+                if (isNaN(hours) || isNaN(minutes)) {
+                    return; // Skip if invalid time
+                }
+
+                let targetTime = new Date();
+                targetTime.setHours(hours, minutes, 0, 0);
+                
+                // If target time is in the past, it must be for tomorrow
+                // But wait, findNextPrayer logic handles "next visible".
+                // If findNextPrayer returns today's prayer, it means currentTime < prayerMinutes.
+                // So targetTime should be > now.
+                // However, with seconds involved, targetTime (00s) might be < now (30s).
+                // In that case, it's actually "tomorrow" only if findNextPrayer returned tomorrow's prayer.
+                // But findNextPrayer returns based on HH:MM.
+                // If 12:05 < 12:05 (False) -> returns Ashar.
+                // If 12:04 < 12:05 (True) -> returns Dzuhur.
+                // If now is 12:04:59. targetTime 12:05:00. diff > 0.
+                // If now is 12:05:01. findNextPrayer should return Ashar.
+                // So targetTime < now shouldn't happen for "today's" prayer usually.
+                // EXCEPT if findNextPrayer wrapped around to tomorrow.
+                
+                // Logic:
+                // If targetTime < now, assume it's tomorrow?
+                // If findNextPrayer returned a prayer index < current time index?
+                // No, findNextPrayer is stateless.
+                
+                // Let's keep the existing logic: if targetTime < now, add 1 day.
+                // This covers the wrap-around case (next prayer is Subuh tomorrow).
+                // It also covers the edge case where now > targetTime by seconds (e.g. 12:05:01 vs 12:05:00), 
+                // effectively treating it as tomorrow's prayer? 
+                // NO! If it's 12:05:01, findNextPrayer should have returned Ashar.
+                // So targetTime would be 15:20. 15:20 > 12:05.
+                // So the only case targetTime < now is if it's tomorrow's prayer (e.g. Subuh 04:45 vs now 20:00).
+                
+                if (targetTime < now) {
+                    targetTime.setDate(targetTime.getDate() + 1);
+                }
+                
+                const diff = targetTime - now;
+                const totalSeconds = Math.floor(Math.max(0, diff) / 1000);
+                
+                const hoursLeft = Math.floor(totalSeconds / 3600);
+                const minutesLeft = Math.floor((totalSeconds % 3600) / 60);
+                const secondsLeft = totalSeconds % 60;
+                
+                const countdownEl = document.getElementById('countdown');
+                if (countdownEl) {
+                    countdownEl.textContent = 
+                        `${String(hoursLeft).padStart(2, '0')}:${String(minutesLeft).padStart(2, '0')}:${String(secondsLeft).padStart(2, '0')}`;
+                }
+                
+                // Check if it's adzan time (within 5 minutes of prayer time)
+                checkAdzanTime();
+            } catch (e) {
+                console.error("Countdown error:", e);
             }
-            
-            const diff = targetTime - now;
-            const hoursLeft = Math.floor(diff / (1000 * 60 * 60));
-            const minutesLeft = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-            const secondsLeft = Math.floor((diff % (1000 * 60)) / 1000);
-            
-            document.getElementById('countdown').textContent = 
-                `${String(hoursLeft).padStart(2, '0')}:${String(minutesLeft).padStart(2, '0')}:${String(secondsLeft).padStart(2, '0')}`;
-            
-            // Check if it's adzan time (within 5 minutes of prayer time)
-            checkAdzanTime();
         }
 
         function checkAdzanTime() {
@@ -474,12 +832,25 @@
             let foundIqomahTime = false;
             
             for (let prayer of prayerTimes) {
+                if (!prayer || !prayer.name) continue;
+
                 // Skip Imsak, Syuruq, and Dhuha - they don't have adzan
                 if (prayer.name === "Imsak" || prayer.name === "Syuruq" || prayer.name === "Dhuha") {
                     continue;
                 }
                 
-                const [hours, minutes] = prayer.time.split(':').map(Number);
+                // Safe parsing
+                let hours, minutes;
+                if (prayer.time && typeof prayer.time === 'string') {
+                    const parts = prayer.time.replace('.', ':').split(':');
+                    if (parts.length >= 2) {
+                        hours = parseInt(parts[0]);
+                        minutes = parseInt(parts[1]);
+                    }
+                }
+                
+                if (isNaN(hours) || isNaN(minutes)) continue;
+
                 const prayerMinutes = hours * 60 + minutes;
                 
                 // Check if current time is within 5 minutes after prayer time (ADZAN)
@@ -540,9 +911,20 @@
                     adzanAudio.currentTime = 0;
                 }
                 adzanAudio = new Audio(adzanAudioUrl);
+                adzanAudio.volume = Math.max(0, Math.min(1, adzanVolume));
                 adzanAudio.play().catch(err => {
                     console.error('Error playing adzan audio:', err);
                 });
+                if (adzanStopTimeout) {
+                    clearTimeout(adzanStopTimeout);
+                    adzanStopTimeout = null;
+                }
+                adzanStopTimeout = setTimeout(() => {
+                    if (adzanAudio) {
+                        adzanAudio.pause();
+                        adzanAudio.currentTime = 0;
+                    }
+                }, Math.max(1, parseInt(adzanMaxMinutes)) * 60 * 1000);
             }
             
             // Hide everything and show adzan message
@@ -579,6 +961,10 @@
                 adzanAudio.pause();
                 adzanAudio.currentTime = 0;
             }
+            if (adzanStopTimeout) {
+                clearTimeout(adzanStopTimeout);
+                adzanStopTimeout = null;
+            }
             
             // Play beep audio if available
             if (beepAudioUrl) {
@@ -587,6 +973,7 @@
                     beepAudio.currentTime = 0;
                 }
                 beepAudio = new Audio(beepAudioUrl);
+                beepAudio.volume = Math.max(0, Math.min(1, beepVolume));
                 beepAudio.play().catch(err => {
                     console.error('Error playing beep audio:', err);
                 });
@@ -623,6 +1010,11 @@
                 adzanAudio.pause();
                 adzanAudio.currentTime = 0;
             }
+            if (adzanStopTimeout) {
+                clearTimeout(adzanStopTimeout);
+                adzanStopTimeout = null;
+            }
+            
             // Restore the original announcement display
             updateAnnouncementDisplay();
         }
@@ -647,9 +1039,16 @@
                 const timeColor = isActive ? '#1a4d2e' : '#d4af37';
                 const borderStyle = isActive ? '' : `border: 2px solid rgba(212, 175, 55, ${transparencyLevel});`;
                 
+                // Display name with Friday adjustment
+                const now = new Date();
+                let displayName = (prayer.name || '').toUpperCase();
+                if (now.getDay() === 5 && displayName === 'DZUHUR') {
+                    displayName = 'JUMAT';
+                }
+                
                 return `
-                    <div class="prayer-card shadow-custom ${cardClass}" style="background: ${isActive ? '' : 'rgba(255, 255, 255, 0.05)'}; ${borderStyle} border-radius: 10px; padding: 12px; text-align: center;">
-                        <div style="font-size: 13px; font-weight: 700; color: ${textColor}; margin-bottom: 6px;">${prayer.name.toUpperCase()}</div>
+                    <div class="prayer-card shadow-custom ${cardClass} ${isActive ? 'soft-pulse-1s' : ''}" style="background: ${isActive ? '' : 'rgba(255, 255, 255, 0.05)'}; ${borderStyle} border-radius: 10px; padding: 12px; text-align: center;">
+                        <div style="font-size: 13px; font-weight: 700; color: ${textColor}; margin-bottom: 6px;">${displayName}</div>
                         <div style="font-size: 28px; font-weight: 800; color: ${timeColor};">${prayer.time}</div>
                     </div>
                 `;
@@ -880,6 +1279,7 @@
         }
 
         // Initialize
+        /*
         updateClock();
         updateCountdown();
         renderPrayerCards();
@@ -888,6 +1288,8 @@
         updateInfoDisplay();
         updateDonaturDisplay();
         updateFinanceDisplay();
+        updateOfficersDisplay();
+        updateAllTransparency();
         
         // Update every second
         setInterval(() => {
@@ -895,38 +1297,45 @@
             updateCountdown();
             renderPrayerCards();
         }, 1000);
+        */
 
-        // Settings Modal Functions
-        const settingsModal = document.getElementById('settings-modal');
-        const closeModalBtn = document.getElementById('close-modal-btn');
-        const openSettingsBtn = document.getElementById('open-settings-btn');
-        
-        openSettingsBtn.addEventListener('click', () => {
-            settingsModal.style.display = 'block';
-            showTab('identitas');
-        });
-
-        closeModalBtn.addEventListener('click', () => {
-            settingsModal.style.display = 'none';
-        });
-
-        // Tab System
-        const tabButtons = document.querySelectorAll('.tab-btn');
-        tabButtons.forEach(btn => {
-            btn.addEventListener('click', () => {
-                const tabName = btn.getAttribute('data-tab');
-                
-                // Update button styles
-                tabButtons.forEach(b => {
-                    b.style.background = 'rgba(255, 255, 255, 0.1)';
-                    b.style.color = 'white';
-                    b.style.border = '2px solid #d4af37';
+        // Settings Modal Functions - Moved to ensure DOM is ready
+        document.addEventListener('DOMContentLoaded', () => {
+            const settingsModal = document.getElementById('settings-modal');
+            const closeModalBtn = document.getElementById('close-modal-btn');
+            const openSettingsBtn = document.getElementById('open-settings-btn');
+            
+            if (openSettingsBtn) {
+                openSettingsBtn.addEventListener('click', () => {
+                    settingsModal.style.display = 'block';
+                    showTab('identitas');
                 });
-                btn.style.background = '#d4af37';
-                btn.style.color = '#1a4d2e';
-                btn.style.border = 'none';
-                
-                showTab(tabName);
+            }
+
+            if (closeModalBtn) {
+                closeModalBtn.addEventListener('click', () => {
+                    settingsModal.style.display = 'none';
+                });
+            }
+
+            // Also attach to tab buttons here to be safe
+            const tabButtons = document.querySelectorAll('.tab-btn');
+            tabButtons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const tabName = btn.getAttribute('data-tab');
+                    
+                    // Update button styles
+                    tabButtons.forEach(b => {
+                        b.style.background = 'rgba(255, 255, 255, 0.1)';
+                        b.style.color = 'white';
+                        b.style.border = '2px solid #d4af37';
+                    });
+                    btn.style.background = '#d4af37';
+                    btn.style.color = '#1a4d2e';
+                    btn.style.border = 'none';
+                    
+                    showTab(tabName);
+                });
             });
         });
 
@@ -989,8 +1398,137 @@
                     tabContent.innerHTML = renderBeepTab();
                     attachBeepEventListeners();
                     break;
+                case 'backup':
+                    tabContent.innerHTML = renderBackupTab();
+                    attachBackupEventListeners();
+                    break;
             }
         }
+
+        function renderBackupTab() {
+            return `
+                <h3 style="color: #d4af37; font-size: 20px; margin-bottom: 16px;">💾 Backup & Restore Data</h3>
+                
+                <div style="background: rgba(212, 175, 55, 0.1); padding: 20px; border-radius: 12px; border: 2px solid #d4af37; margin-bottom: 24px;">
+                    <h4 style="color: white; font-size: 16px; margin-bottom: 12px; font-weight: 700;">⬇️ Download Backup Data</h4>
+                    <p style="color: rgba(255,255,255,0.7); font-size: 14px; margin-bottom: 16px;">
+                        Simpan semua pengaturan, jadwal, dan data masjid ke dalam satu file. Aman untuk dipindahkan ke komputer lain.
+                    </p>
+                    <button onclick="downloadBackup()" style="background: #d4af37; color: #1a4d2e; border: none; border-radius: 8px; padding: 12px 24px; font-weight: 700; cursor: pointer;">
+                        💾 DOWNLOAD DATA BACKUP
+                    </button>
+                </div>
+
+                <div style="background: rgba(255, 255, 255, 0.05); padding: 20px; border-radius: 12px; border: 2px dashed rgba(212, 175, 55, 0.5);">
+                    <h4 style="color: #d4af37; font-size: 16px; margin-bottom: 12px; font-weight: 700;">⬆️ Restore Data dari File</h4>
+                    <p style="color: rgba(255,255,255,0.7); font-size: 14px; margin-bottom: 16px;">
+                        Kembalikan pengaturan dari file backup yang sudah disimpan sebelumnya.
+                    </p>
+                    <input type="file" id="restore-upload" accept=".json" style="display: none;" onchange="handleRestoreUpload(event)">
+                    <button onclick="document.getElementById('restore-upload').click()" style="background: rgba(212, 175, 55, 0.2); color: #d4af37; border: 2px solid #d4af37; border-radius: 8px; padding: 12px 24px; font-weight: 700; cursor: pointer;">
+                        📂 PILIH FILE BACKUP
+                    </button>
+                </div>
+            `;
+        }
+
+        function attachBackupEventListeners() {
+            // Handled by inline onclick
+        }
+
+        window.downloadBackup = function() {
+            const dataToSave = {
+                prayerTimes,
+                infoMasjidData,
+                donatorsData,
+                financeData,
+                officersData,
+                takmirData,
+                leftColumnMode,
+                leftColumnImageUrl,
+                slideshowData,
+                backgroundSettings,
+                currentMosqueName,
+                currentMosqueAddress,
+                currentAnnouncement,
+                announcementMode,
+                adzanAudioUrl,
+                beepAudioUrl,
+                adzanVolume,
+                beepVolume,
+                transparencyLevel,
+                prayerScheduleData,
+                timestamp: new Date().toISOString()
+            };
+            
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(dataToSave, null, 2));
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute("href", dataStr);
+            const date = new Date().toISOString().slice(0,10);
+            downloadAnchorNode.setAttribute("download", `backup_masjid_${date}.json`);
+            document.body.appendChild(downloadAnchorNode); // required for firefox
+            downloadAnchorNode.click();
+            downloadAnchorNode.remove();
+            
+            showNotification('✅ Data berhasil didownload!');
+        };
+
+        window.handleRestoreUpload = function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const json = JSON.parse(e.target.result);
+                    
+                    // Validate basic structure
+                    if (!json.prayerTimes && !json.infoMasjidData) {
+                        alert("File backup tidak valid!");
+                        return;
+                    }
+
+                    if (confirm("Apakah Anda yakin ingin merestore data ini? Semua pengaturan saat ini akan digantikan.")) {
+                        // Restore to variables
+                        if(json.prayerTimes) prayerTimes = json.prayerTimes;
+                        if(json.infoMasjidData) infoMasjidData = { ...infoMasjidData, ...json.infoMasjidData };
+                        if(json.donatorsData) donatorsData = json.donatorsData;
+                        if(json.financeData) financeData = { ...financeData, ...json.financeData };
+                        if(json.officersData) officersData = json.officersData;
+                        if(json.takmirData) takmirData = json.takmirData;
+                        if(json.leftColumnMode) leftColumnMode = json.leftColumnMode;
+                        if(json.leftColumnImageUrl) leftColumnImageUrl = json.leftColumnImageUrl;
+                        if(json.slideshowData) slideshowData = json.slideshowData;
+                        if(json.backgroundSettings) backgroundSettings = json.backgroundSettings;
+                        
+                        if(json.currentMosqueName) currentMosqueName = json.currentMosqueName;
+                        if(json.currentMosqueAddress) currentMosqueAddress = json.currentMosqueAddress;
+                        if(json.currentAnnouncement) currentAnnouncement = json.currentAnnouncement;
+                        if(json.announcementMode) announcementMode = json.announcementMode;
+                        
+                        if(json.adzanAudioUrl) adzanAudioUrl = json.adzanAudioUrl;
+                        if(json.beepAudioUrl) beepAudioUrl = json.beepAudioUrl;
+                        if(json.adzanVolume !== undefined) adzanVolume = json.adzanVolume;
+                        if(json.beepVolume !== undefined) beepVolume = json.beepVolume;
+                        if(json.transparencyLevel) transparencyLevel = json.transparencyLevel;
+                        
+                        if(json.prayerScheduleData) prayerScheduleData = json.prayerScheduleData;
+
+                        // Save to localStorage immediately
+                        saveToLocalStorage();
+                        
+                        showNotification('✅ Data berhasil direstore! Memuat ulang...');
+                        setTimeout(() => {
+                            location.reload();
+                        }, 1500);
+                    }
+                } catch (err) {
+                    console.error(err);
+                    alert("Gagal membaca file backup. Pastikan file JSON valid.");
+                }
+            };
+            reader.readAsText(file);
+        };
 
         function renderIdentitasTab() {
             return `
@@ -1127,7 +1665,7 @@
                         <div>
                             <label style="display: block; color: white; margin-bottom: 8px; font-weight: 600;">Preview:</label>
                             <div style="width: 100%; height: 150px; border-radius: 8px; border: 2px solid #d4af37; overflow: hidden; background: #000;">
-                                <img src="${backgroundSettings.imageUrl}" style="width: 100%; height: 100%; object-fit: cover; opacity: ${backgroundSettings.imageOpacity};" alt="Preview" onerror="this.style.display='none'; this.parentElement.innerHTML='<div style=\\"display: flex; align-items: center; justify-content: center; height: 100%; color: #f87171;\\">Gagal memuat gambar</div>';">
+                                <img src="${backgroundSettings.imageUrl}" style="width: 100%; height: 100%; object-fit: cover; opacity: ${backgroundSettings.imageOpacity};" alt="Preview" onerror="this.style.display='none'; this.parentElement.innerHTML='<div style=\\'display: flex; align-items: center; justify-content: center; height: 100%; color: #f87171;\\'>Gagal memuat gambar</div>';">
                             </div>
                         </div>
                         ` : ''}
@@ -1297,6 +1835,24 @@
 
         function renderWaktuTab() {
             let html = '<h3 style="color: #d4af37; font-size: 20px; margin-bottom: 16px;">🕌 Edit Waktu Sholat</h3>';
+            
+            // Excel Upload Section
+            html += `
+                <div style="background: rgba(212, 175, 55, 0.1); padding: 16px; border-radius: 8px; border: 1px dashed #d4af37; margin-bottom: 24px;">
+                    <h4 style="color: #d4af37; font-size: 16px; margin-bottom: 12px; font-weight: 700;">📂 Import Jadwal Excel (Otomatis)</h4>
+                    <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
+                        <button onclick="downloadTemplate()" style="background: #1a4d2e; color: #d4af37; border: 1px solid #d4af37; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 14px;">
+                            📥 Download Template
+                        </button>
+                        <input type="file" id="excel-upload" accept=".xlsx, .xls" style="color: white;">
+                    </div>
+                    <div id="excel-status" style="margin-top: 8px; font-size: 13px; color: rgba(255,255,255,0.7);">
+                        ${getExcelStatusText()}
+                    </div>
+                </div>
+            `;
+
+            html += '<h4 style="color: #d4af37; font-size: 16px; margin-bottom: 12px; font-weight: 700;">✏️ Edit Manual (Hari Ini)</h4>';
             html += '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">';
             
             prayerTimes.forEach((prayer, index) => {
@@ -1309,7 +1865,7 @@
             });
             
             html += '</div>';
-            html += '<button id="save-waktu-btn" style="background: #d4af37; color: #1a4d2e; border: none; border-radius: 8px; padding: 12px 24px; font-weight: 700; cursor: pointer; margin-top: 16px;">💾 SIMPAN PERUBAHAN</button>';
+            html += '<button id="save-waktu-btn" style="background: #d4af37; color: #1a4d2e; border: none; border-radius: 8px; padding: 12px 24px; font-weight: 700; cursor: pointer; margin-top: 16px;">💾 SIMPAN PERUBAHAN MANUAL</button>';
             
             return html;
         }
@@ -1357,6 +1913,7 @@
             prayerTimes[index].visible = !prayerTimes[index].visible;
             renderPrayerCards();
             showTab('visibility'); // Refresh tab to show updated state
+            saveToLocalStorage();
             showNotification(prayerTimes[index].visible ? `✅ ${prayerTimes[index].name} akan ditampilkan` : `✅ ${prayerTimes[index].name} disembunyikan`);
         };
 
@@ -1366,9 +1923,145 @@
                     prayer.time = document.getElementById(`time-${index}`).value;
                 });
                 renderPrayerCards();
+                saveToLocalStorage();
                 showNotification('✅ Waktu sholat berhasil diupdate!');
             });
+
+            const fileInput = document.getElementById('excel-upload');
+            if(fileInput) {
+                fileInput.addEventListener('change', handleExcelUpload);
+            }
         }
+
+        // --- EXCEL & AUTO UPDATE LOGIC ---
+
+
+        function getExcelStatusText() {
+            if (!prayerScheduleData || prayerScheduleData.length === 0) {
+                return "ℹ️ Belum ada data jadwal. Silakan upload file Excel.";
+            }
+            return `✅ Tersimpan: ${prayerScheduleData.length} hari data jadwal.`;
+        }
+
+        function downloadTemplate() {
+            const headers = ["Tanggal", "Subuh", "Dzuhur", "Ashar", "Maghrib", "Isya", "Imsak", "Syuruq", "Dhuha"];
+            const exampleRow = ["2024-01-01", "04:30", "12:00", "15:15", "18:00", "19:15", "04:20", "05:45", "06:15"];
+            
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.aoa_to_sheet([headers, exampleRow]);
+            XLSX.utils.book_append_sheet(wb, ws, "Template Jadwal");
+            XLSX.writeFile(wb, "Template_Jadwal_Sholat.xlsx");
+        }
+
+        function handleExcelUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, {type: 'array'});
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet, {raw: false}); // raw:false ensures dates are strings if formatted
+
+                    if (jsonData.length > 0) {
+                        // Validate columns slightly
+                        const firstRow = jsonData[0];
+                        if (!firstRow.hasOwnProperty('Tanggal') || !firstRow.hasOwnProperty('Subuh')) {
+                            alert("Format Excel tidak sesuai! Pastikan menggunakan template.");
+                            return;
+                        }
+
+                        prayerScheduleData = jsonData;
+                        saveToLocalStorage();
+                        // localStorage.setItem('prayerScheduleData', JSON.stringify(jsonData)); // Handled by saveToLocalStorage
+                        
+                        document.getElementById('excel-status').textContent = getExcelStatusText();
+                        showNotification(`✅ Berhasil import ${jsonData.length} hari jadwal!`);
+                        
+                        // Update today's schedule immediately
+                        checkDailyUpdate();
+                        
+                        // Close modal to show changes
+                        setTimeout(() => {
+                             // Optional: close modal or just refresh cards
+                             renderPrayerCards();
+                        }, 1000);
+                    }
+                } catch (err) {
+                    console.error(err);
+                    alert("Gagal membaca file Excel. Pastikan file tidak rusak.");
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function checkDailyUpdate() {
+            if (!prayerScheduleData || prayerScheduleData.length === 0) return;
+
+            const now = new Date();
+            // Format YYYY-MM-DD to match Excel standard text
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const todayStr = `${year}-${month}-${day}`; // 2024-12-30
+            
+            // Also try DD/MM/YYYY or M/D/YY just in case, but let's stick to standard first.
+            // Better: Normalize dates.
+            
+            const todayEntry = prayerScheduleData.find(row => {
+                // Handle various date formats from Excel
+                // Case 1: "2024-12-30" or "12/30/24" string
+                if (typeof row.Tanggal === 'string') {
+                    return row.Tanggal.includes(todayStr) || row.Tanggal === `${day}/${month}/${year}`;
+                }
+                // Case 2: Excel Serial Date (if raw:true was used, but we used raw:false)
+                return false;
+            });
+
+            if (todayEntry) {
+                console.log("Found schedule for today:", todayEntry);
+                let updated = false;
+                
+                // Map Excel columns to prayerTimes array
+                // prayerTimes = [{name: "Subuh", time: "04:45"}, ...]
+                
+                const mapNames = {
+                    "Subuh": "Subuh",
+                    "Dzuhur": "Dzuhur",
+                    "Ashar": "Ashar", 
+                    "Maghrib": "Maghrib",
+                    "Isya": "Isya",
+                    "Imsak": "Imsak",
+                    "Syuruq": "Syuruq",
+                    "Dhuha": "Dhuha"
+                };
+
+                prayerTimes.forEach(p => {
+                    const excelKey = Object.keys(mapNames).find(k => mapNames[k] === p.name);
+                    if (excelKey && todayEntry[excelKey]) {
+                        // Simple validation of time format HH:MM
+                        let t = todayEntry[excelKey].trim();
+                        // If excel has seconds like 04:30:00, take first 5 chars
+                        if (t.length > 5) t = t.substring(0, 5);
+                        
+                        if (p.time !== t) {
+                            p.time = t;
+                            updated = true;
+                        }
+                    }
+                });
+
+                if (updated) {
+                    renderPrayerCards();
+                    // Optional: show a small toast that schedule was updated
+                    console.log("Jadwal sholat diperbarui otomatis dari Excel.");
+                }
+            }
+        }
+
 
         function renderPengumumanTab() {
             return `
@@ -1424,6 +2117,7 @@
             announcementMode = mode;
             updateAnnouncementDisplay();
             showTab('mode-pengumuman'); // Refresh tab to show updated selection
+            saveToLocalStorage();
             showNotification(mode === 'text' ? '✅ Mode Teks aktif!' : '✅ Mode Slideshow aktif!');
         };
 
@@ -1442,7 +2136,7 @@
                         <div style="display: grid; grid-template-columns: 200px 1fr; gap: 16px;">
                             <div style="text-align: center;">
                                 <div style="width: 180px; height: 135px; margin: 0 auto 8px; border-radius: 8px; background: rgba(212, 175, 55, 0.2); display: flex; align-items: center; justify-content: center; border: 2px solid #d4af37; overflow: hidden;">
-                                    ${slide.imageUrl ? `<img id="slide-preview-${index}" src="${slide.imageUrl}" style="max-width: 100%; max-height: 100%; object-fit: contain;" alt="Preview" onerror="this.style.display='none'; this.parentElement.innerHTML='<svg style=\\"width: 50px; height: 50px; color: #d4af37;\\" fill=\\"currentColor\\" viewBox=\\"0 0 20 20\\"><path d=\\"M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z\\"/></svg><div style=\\"color: #f87171; font-size: 10px; margin-top: 4px;\\">Gagal memuat</div>';">` : `<svg style="width: 50px; height: 50px; color: #d4af37;" fill="currentColor" viewBox="0 0 20 20"><path d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z"/></svg>`}
+                                    ${slide.imageUrl ? `<img id="slide-preview-${index}" src="${slide.imageUrl}" style="max-width: 100%; max-height: 100%; object-fit: contain;" alt="Preview" onerror="this.style.display='none'; this.parentElement.innerHTML='<svg style=\\'width: 50px; height: 50px; color: #d4af37;\\' fill=\\'currentColor\\' viewBox=\\'0 0 20 20\\'><path d=\\'M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z\\'/></svg><div style=\\'color: #f87171; font-size: 10px; margin-top: 4px;\\'>Gagal memuat</div>';">` : `<svg style="width: 50px; height: 50px; color: #d4af37;" fill="currentColor" viewBox="0 0 20 20"><path d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z"/></svg>`}
                                 </div>
                                 <button onclick="previewSlide(${index})" style="background: rgba(212, 175, 55, 0.2); color: #d4af37; border: 2px solid #d4af37; border-radius: 6px; padding: 4px 12px; cursor: pointer; font-size: 11px; font-weight: 600;">   ️ Preview</button>
                             </div>
@@ -1477,6 +2171,7 @@
             document.getElementById('save-announcement-btn').addEventListener('click', () => {
                 currentAnnouncement = document.getElementById('edit-announcement').value;
                 document.getElementById('announcement-text').textContent = currentAnnouncement;
+                saveToLocalStorage();
                 showNotification('✅ Pengumuman berhasil diupdate!');
             });
         }
@@ -1490,6 +2185,7 @@
                 currentSlideIndex = 0;
                 renderSlideshow();
                 startSlideshow();
+                saveToLocalStorage();
                 showNotification('✅ Slideshow berhasil disimpan!');
             });
         }
@@ -1500,7 +2196,7 @@
             
             if (imageUrl) {
                 const parentDiv = previewImg ? previewImg.parentElement : document.querySelector(`#slide-preview-${index}`).parentElement;
-                parentDiv.innerHTML = `<img id="slide-preview-${index}" src="${imageUrl}" style="max-width: 100%; max-height: 100%; object-fit: contain;" alt="Preview" onerror="this.style.display='none'; this.parentElement.innerHTML='<svg style=\\"width: 50px; height: 50px; color: #d4af37;\\" fill=\\"currentColor\\" viewBox=\\"0 0 20 20\\"><path d=\\"M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z\\"/></svg><div style=\\"color: #f87171; font-size: 10px; margin-top: 4px;\\">Gagal memuat</div>';">`;
+                parentDiv.innerHTML = `<img id="slide-preview-${index}" src="${imageUrl}" style="max-width: 100%; max-height: 100%; object-fit: contain;" alt="Preview" onerror="this.style.display='none'; this.parentElement.innerHTML='<svg style=\\'width: 50px; height: 50px; color: #d4af37;\\' fill=\\'currentColor\\' viewBox=\\'0 0 20 20\\'><path d=\\'M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z\\'/></svg><div style=\\'color: #f87171; font-size: 10px; margin-top: 4px;\\'>Gagal memuat</div>';">`;
                 showNotification('👁️ Preview diupdate!');
             } else {
                 showNotification('⚠️ Masukkan URL gambar terlebih dahulu!');
@@ -1582,6 +2278,29 @@
                     </div>
                     <button id="save-info-btn" style="background: #d4af37; color: #1a4d2e; border: none; border-radius: 8px; padding: 12px 24px; font-weight: 700; cursor: pointer; margin-top: 8px;">💾 SIMPAN PERUBAHAN</button>
                 </div>
+                
+                <h3 style="color: #d4af37; font-size: 20px; margin: 24px 0 12px;">🔧 Pengaturan Tampilan Info</h3>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: start;">
+                    <div style="background: rgba(255, 255, 255, 0.05); padding: 12px; border-radius: 8px; border: 1px solid rgba(212, 175, 55, 0.4);">
+                        <div style="color: #d4af37; font-weight: 700; margin-bottom: 8px;">Pilih Informasi yang Ditampilkan</div>
+                        <label style="display: flex; align-items: center; gap: 8px; color: white; margin-bottom: 6px;"><input type="checkbox" id="info-visible-capacity" ${infoVisibilityConfig.capacity ? 'checked' : ''}> Kapasitas</label>
+                        <label style="display: flex; align-items: center; gap: 8px; color: white; margin-bottom: 6px;"><input type="checkbox" id="info-visible-facilities" ${infoVisibilityConfig.facilities ? 'checked' : ''}> Fasilitas</label>
+                        <label style="display: flex; align-items: center; gap: 8px; color: white; margin-bottom: 6px;"><input type="checkbox" id="info-visible-iqomah" ${infoVisibilityConfig.iqomah ? 'checked' : ''}> Iqomah</label>
+                        <label style="display: flex; align-items: center; gap: 8px; color: white; margin-bottom: 6px;"><input type="checkbox" id="info-visible-contact" ${infoVisibilityConfig.contact ? 'checked' : ''}> Kontak</label>
+                        <label style="display: flex; align-items: center; gap: 8px; color: white; margin-bottom: 6px;"><input type="checkbox" id="info-visible-ramadhan" ${infoVisibilityConfig.ramadhan ? 'checked' : ''}> Info Ramadhan/Raya</label>
+                        <label style="display: flex; align-items: center; gap: 8px; color: white; margin-bottom: 6px;"><input type="checkbox" id="info-visible-qurban" ${infoVisibilityConfig.qurban ? 'checked' : ''}> Info Qurban</label>
+                        <label style="display: flex; align-items: center; gap: 8px; color: white;"><input type="checkbox" id="info-visible-rekening" ${infoVisibilityConfig.rekening ? 'checked' : ''}> No. Rekening</label>
+                    </div>
+                    <div style="background: rgba(255, 255, 255, 0.05); padding: 12px; border-radius: 8px; border: 1px solid rgba(212, 175, 55, 0.4);">
+                        <div style="color: #d4af37; font-weight: 700; margin-bottom: 8px;">Pergantian Otomatis</div>
+                        <label style="display: flex; align-items: center; gap: 8px; color: white; margin-bottom: 8px;"><input type="checkbox" id="info-auto-rotate" ${infoAutoRotate ? 'checked' : ''}> Aktifkan ganti otomatis</label>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <input type="range" id="info-rotate-interval" min="3" max="20" value="${infoRotateIntervalSec}" oninput="document.getElementById('info-rotate-interval-display').textContent=this.value+' dtk'" style="flex: 1;">
+                            <div id="info-rotate-interval-display" style="width: 64px; text-align: right; color: white;">${infoRotateIntervalSec} dtk</div>
+                        </div>
+                    </div>
+                </div>
+                <button id="save-info-visibility-btn" style="margin-top: 12px; background: #d4af37; color: #1a4d2e; border: none; border-radius: 8px; padding: 12px 24px; font-weight: 700; cursor: pointer;">✅ SIMPAN PENGATURAN TAMPILAN</button>
             `;
         }
 
@@ -1597,8 +2316,34 @@
                     rekening: document.getElementById('edit-rekening').value
                 };
                 updateInfoDisplay();
+                saveToLocalStorage();
                 showNotification('✅ Info masjid berhasil diupdate!');
             });
+            const saveVisibilityBtn = document.getElementById('save-info-visibility-btn');
+            if (saveVisibilityBtn) {
+                saveVisibilityBtn.addEventListener('click', () => {
+                    infoVisibilityConfig = {
+                        capacity: document.getElementById('info-visible-capacity').checked,
+                        facilities: document.getElementById('info-visible-facilities').checked,
+                        iqomah: document.getElementById('info-visible-iqomah').checked,
+                        contact: document.getElementById('info-visible-contact').checked,
+                        ramadhan: document.getElementById('info-visible-ramadhan').checked,
+                        qurban: document.getElementById('info-visible-qurban').checked,
+                        rekening: document.getElementById('info-visible-rekening').checked
+                    };
+                    infoAutoRotate = document.getElementById('info-auto-rotate').checked;
+                    infoRotateIntervalSec = parseInt(document.getElementById('info-rotate-interval').value);
+                    infoRotateIndex = 0;
+                    updateInfoDisplay();
+                    saveToLocalStorage();
+                    if (infoAutoRotate) {
+                        startInfoRotation();
+                    } else {
+                        stopInfoRotation();
+                    }
+                    showNotification('✅ Pengaturan tampilan info diterapkan!');
+                });
+            }
         }
 
         function renderDonaturTab() {
@@ -1665,6 +2410,10 @@
                         <input type="text" id="edit-weekly-income" value="${financeData.weeklyIncome}" style="width: 100%; padding: 12px; border-radius: 8px; border: 2px solid #d4af37; background: rgba(255, 255, 255, 0.1); color: white; font-size: 16px;">
                     </div>
                     <div>
+                        <label style="display: block; color: white; margin-bottom: 8px; font-weight: 600;">Pemasukan Jumat Lalu (tanpa Rp):</label>
+                        <input type="text" id="edit-friday-income" value="${financeData.fridayIncome}" style="width: 100%; padding: 12px; border-radius: 8px; border: 2px solid #d4af37; background: rgba(255, 255, 255, 0.1); color: white; font-size: 16px;">
+                    </div>
+                    <div>
                         <label style="display: block; color: white; margin-bottom: 8px; font-weight: 600;">Penerimaan (tanpa Rp):</label>
                         <input type="text" id="edit-income" value="${financeData.income}" style="width: 100%; padding: 12px; border-radius: 8px; border: 2px solid #d4af37; background: rgba(255, 255, 255, 0.1); color: white; font-size: 16px;">
                     </div>
@@ -1690,6 +2439,7 @@
                 financeData = {
                     todayIncome: document.getElementById('edit-today-income').value,
                     weeklyIncome: document.getElementById('edit-weekly-income').value,
+                    fridayIncome: document.getElementById('edit-friday-income').value,
                     income: document.getElementById('edit-income').value,
                     expense: document.getElementById('edit-expense').value,
                     lastExpense: document.getElementById('edit-last-expense').value
@@ -1733,6 +2483,7 @@
                     officer.muadzin = document.getElementById(`officer-muadzin-${index}`).value;
                 });
                 updateOfficersDisplay();
+                saveToLocalStorage();
                 showNotification('✅ Petugas sholat berhasil diupdate!');
             });
         }
@@ -1780,7 +2531,7 @@
                         <div style="display: grid; grid-template-columns: 120px 1fr; gap: 16px; margin-bottom: 12px;">
                             <div style="text-align: center;">
                                 <div style="width: 100px; height: 133px; margin: 0 auto 8px; border-radius: 8px; background: linear-gradient(135deg, #d4af37 0%, #c9a636 100%); display: flex; align-items: center; justify-content: center; border: 3px solid #d4af37; overflow: hidden;">
-                                    ${takmir.photoUrl ? `<img id="preview-${index}" src="${takmir.photoUrl}" style="width: 100%; height: 100%; object-fit: cover;" alt="Preview" onerror="this.style.display='none'; this.parentElement.innerHTML='<svg style=\\"width: 50px; height: 50px; color: #1a4d2e;\\" fill=\\"currentColor\\" viewBox=\\"0 0 20 20\\"><path d=\\"M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z\\"/></svg>';">` : `<svg style="width: 50px; height: 50px; color: #1a4d2e;" fill="currentColor" viewBox="0 0 20 20"><path d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"/></svg>`}
+                                    ${takmir.photoUrl ? `<img id="preview-${index}" src="${takmir.photoUrl}" style="width: 100%; height: 100%; object-fit: cover;" alt="Preview" onerror="this.style.display='none'; this.parentElement.innerHTML='<svg style=\\'width: 50px; height: 50px; color: #1a4d2e;\\' fill=\\'currentColor\\' viewBox=\\'0 0 20 20\\'><path d=\\'M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z\\'/></svg>';">` : `<svg style="width: 50px; height: 50px; color: #1a4d2e;" fill="currentColor" viewBox="0 0 20 20"><path d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"/></svg>`}
                                 </div>
                                 <button onclick="previewTakmir(${index})" style="background: rgba(212, 175, 55, 0.2); color: #d4af37; border: 2px solid #d4af37; border-radius: 6px; padding: 4px 8px; cursor: pointer; font-size: 11px; font-weight: 600;">👁️ Preview</button>
                             </div>
@@ -1844,6 +2595,7 @@
                     }
                 });
                 updateTakmirDisplay();
+                saveToLocalStorage();
                 showNotification('✅ Data berhasil disimpan!');
             });
         }
@@ -1874,6 +2626,15 @@
                     <button onclick="document.getElementById('beep-audio-upload').click()" style="width: 100%; background: #d4af37; color: #1a4d2e; border: none; border-radius: 8px; padding: 14px; cursor: pointer; font-weight: 700; font-size: 16px;">
                         📁 ${beepAudioUrl ? 'GANTI' : 'UPLOAD'} SUARA BEEP
                     </button>
+                </div>
+                
+                <div style="background: rgba(255, 255, 255, 0.05); padding: 16px; border-radius: 8px; margin-bottom: 16px; border: 1px solid rgba(212, 175, 55, 0.4);">
+                    <div style="color: #d4af37; font-weight: 700; margin-bottom: 8px;">Volume Beep Iqomah</div>
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <input type="range" id="beep-volume-slider" min="0" max="100" value="${Math.round(beepVolume * 100)}" oninput="updateBeepVolumeDisplay(this.value)" style="flex: 1;">
+                        <div id="beep-volume-display" style="width: 60px; text-align: right; color: white;">${Math.round(beepVolume * 100)}%</div>
+                    </div>
+                    <button onclick="applyBeepVolume()" style="margin-top: 10px; background: #d4af37; color: #1a4d2e; border: none; border-radius: 6px; padding: 8px 14px; font-weight: 700; cursor: pointer;"> Terapkan Volume</button>
                 </div>
                 
                 <div style="background: rgba(255, 255, 255, 0.05); padding: 16px; border-radius: 8px; border-left: 4px solid #d4af37;">
@@ -1912,6 +2673,7 @@
                 reader.onload = function(e) {
                     beepAudioUrl = e.target.result;
                     showTab('beep'); // Refresh tab to show preview
+                    saveToLocalStorage();
                     showNotification('   Suara beep berhasil diupload!');
                 };
                 reader.onerror = function() {
@@ -1929,6 +2691,7 @@
                 beepAudio = null;
             }
             showTab('beep');
+            saveToLocalStorage();
             showNotification('✅ Suara beep berhasil dihapus!');
         };
 
@@ -1958,6 +2721,24 @@
                     <button onclick="document.getElementById('adzan-audio-upload').click()" style="width: 100%; background: #d4af37; color: #1a4d2e; border: none; border-radius: 8px; padding: 14px; cursor: pointer; font-weight: 700; font-size: 16px;">
                         📁 ${adzanAudioUrl ? 'GANTI' : 'UPLOAD'} SUARA ADZAN
                     </button>
+                </div>
+                
+                <div style="background: rgba(255, 255, 255, 0.05); padding: 16px; border-radius: 8px; margin-bottom: 16px; border: 1px solid rgba(212, 175, 55, 0.4);">
+                    <div style="color: #d4af37; font-weight: 700; margin-bottom: 8px;">Volume Suara Adzan</div>
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <input type="range" id="adzan-volume-slider" min="0" max="100" value="${Math.round(adzanVolume * 100)}" oninput="updateAdzanVolumeDisplay(this.value)" style="flex: 1;">
+                        <div id="adzan-volume-display" style="width: 60px; text-align: right; color: white;">${Math.round(adzanVolume * 100)}%</div>
+                    </div>
+                    <button onclick="applyAdzanVolume()" style="margin-top: 10px; background: #d4af37; color: #1a4d2e; border: none; border-radius: 6px; padding: 8px 14px; font-weight: 700; cursor: pointer;"> Terapkan Volume</button>
+                </div>
+                
+                <div style="background: rgba(255, 255, 255, 0.05); padding: 16px; border-radius: 8px; margin-bottom: 16px; border: 1px solid rgba(212, 175, 55, 0.4);">
+                    <div style="color: #d4af37; font-weight: 700; margin-bottom: 8px;">Durasi Maksimal Adzan</div>
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <input type="range" id="adzan-duration-slider" min="1" max="10" value="${parseInt(adzanMaxMinutes)}" oninput="updateAdzanDurationDisplay(this.value)" style="flex: 1;">
+                        <div id="adzan-duration-display" style="width: 80px; text-align: right; color: white;">${parseInt(adzanMaxMinutes)} menit</div>
+                    </div>
+                    <button onclick="applyAdzanDuration()" style="margin-top: 10px; background: #d4af37; color: #1a4d2e; border: none; border-radius: 6px; padding: 8px 14px; font-weight: 700; cursor: pointer;"> Terapkan Durasi</button>
                 </div>
                 
                 <div style="background: rgba(255, 255, 255, 0.05); padding: 16px; border-radius: 8px; border-left: 4px solid #d4af37;">
@@ -1996,6 +2777,7 @@
                 reader.onload = function(e) {
                     adzanAudioUrl = e.target.result;
                     showTab('audio'); // Refresh tab to show preview
+                    saveToLocalStorage();
                     showNotification('✅ Suara adzan berhasil diupload!');
                 };
                 reader.onerror = function() {
@@ -2013,6 +2795,7 @@
                 adzanAudio = null;
             }
             showTab('audio');
+            saveToLocalStorage();
             showNotification('✅ Suara adzan berhasil dihapus!');
         };
 
@@ -2041,7 +2824,54 @@
             if (slider) {
                 transparencyLevel = parseInt(slider.value) / 100;
                 updateAllTransparency();
+                saveToLocalStorage();
                 showNotification('✅ Transparansi berhasil diterapkan!');
+            }
+        };
+
+        window.updateAdzanVolumeDisplay = function(value) {
+            const percentage = Math.round(value);
+            const el = document.getElementById('adzan-volume-display');
+            if (el) el.textContent = percentage + '%';
+            const preview = document.getElementById('audio-preview');
+            if (preview) preview.volume = percentage / 100;
+        };
+        window.applyAdzanVolume = function() {
+            const slider = document.getElementById('adzan-volume-slider');
+            if (slider) {
+                adzanVolume = Math.max(0, Math.min(1, parseInt(slider.value) / 100));
+                if (adzanAudio) adzanAudio.volume = adzanVolume;
+                saveToLocalStorage();
+                showNotification('✅ Volume adzan diterapkan!');
+            }
+        };
+        window.updateAdzanDurationDisplay = function(value) {
+            const minutes = Math.max(1, parseInt(value));
+            const el = document.getElementById('adzan-duration-display');
+            if (el) el.textContent = minutes + ' menit';
+        };
+        window.applyAdzanDuration = function() {
+            const slider = document.getElementById('adzan-duration-slider');
+            if (slider) {
+                adzanMaxMinutes = Math.max(1, parseInt(slider.value));
+                saveToLocalStorage();
+                showNotification('✅ Durasi adzan diterapkan!');
+            }
+        };
+        window.updateBeepVolumeDisplay = function(value) {
+            const percentage = Math.round(value);
+            const el = document.getElementById('beep-volume-display');
+            if (el) el.textContent = percentage + '%';
+            const preview = document.getElementById('beep-preview');
+            if (preview) preview.volume = percentage / 100;
+        };
+        window.applyBeepVolume = function() {
+            const slider = document.getElementById('beep-volume-slider');
+            if (slider) {
+                beepVolume = Math.max(0, Math.min(1, parseInt(slider.value) / 100));
+                if (beepAudio) beepAudio.volume = beepVolume;
+                saveToLocalStorage();
+                showNotification('✅ Volume beep diterapkan!');
             }
         };
 
@@ -2084,7 +2914,7 @@
             
             if (photoUrl) {
                 const parentDiv = previewImg ? previewImg.parentElement : document.querySelector(`#preview-${index}`).parentElement;
-                parentDiv.innerHTML = `<img id="preview-${index}" src="${photoUrl}" style="width: 100%; height: 100%; object-fit: cover;" alt="Preview" onerror="this.style.display='none'; this.parentElement.innerHTML='<svg style=\\"width: 50px; height: 50px; color: #1a4d2e;\\" fill=\\"currentColor\\" viewBox=\\"0 0 20 20\\"><path d=\\"M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z\\"/></svg><div style=\\"color: #f87171; font-size: 10px; margin-top: 4px;\\">Gagal memuat</div>';">`;
+                parentDiv.innerHTML = `<img id="preview-${index}" src="${photoUrl}" style="width: 100%; height: 100%; object-fit: cover;" alt="Preview" onerror="this.style.display='none'; this.parentElement.innerHTML='<svg style=\\'width: 50px; height: 50px; color: #1a4d2e;\\' fill=\\'currentColor\\' viewBox=\\'0 0 20 20\\'><path d=\\'M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z\\'/></svg><div style=\\'color: #f87171; font-size: 10px; margin-top: 4px;\\'>Gagal memuat</div>';">`;
                 showNotification('👁️ Preview diupdate!');
             } else {
                 showNotification('⚠️ Masukkan URL foto terlebih dahulu!');
@@ -2095,6 +2925,7 @@
             takmirData[index] = { name: "", position: "", photoUrl: "" };
             updateTakmirDisplay();
             showTab('takmir');
+            saveToLocalStorage();
             showNotification('✅ Data takmir berhasil dihapus!');
         };
 
@@ -2168,6 +2999,7 @@
             donatorsData.splice(index, 1);
             updateDonaturDisplay();
             showTab('donatur');
+            saveToLocalStorage();
             showNotification('✅ Donatur berhasil dihapus!');
         };
 
@@ -2180,6 +3012,7 @@
                 donatorsData[index] = { name, amount };
                 updateDonaturDisplay();
                 showTab('donatur');
+                saveToLocalStorage();
                 showNotification('✅ Donatur berhasil diupdate!');
             }
         };
@@ -2189,6 +3022,7 @@
                 officersData.splice(index, 1);
                 updateOfficersDisplay();
                 showTab('petugas');
+                saveToLocalStorage();
                 showNotification('✅ Petugas berhasil dihapus!');
             } else {
                 showNotification('⚠️ Minimal harus ada 1 petugas!');
@@ -2197,60 +3031,119 @@
 
         window.saveIdentitas = function() {
             currentMosqueName = document.getElementById('edit-mosque-name').value;
-            currentMosqueAddress = document.getElementById('edit-mosque-address').value;
-            document.getElementById('mosque-name').textContent = currentMosqueName;
-            document.getElementById('mosque-address').textContent = currentMosqueAddress;
-            showNotification('✅ Identitas masjid berhasil diupdate!');
+                currentMosqueAddress = document.getElementById('edit-mosque-address').value;
+                document.getElementById('mosque-name').textContent = currentMosqueName;
+                document.getElementById('mosque-address').textContent = currentMosqueAddress;
+                saveToLocalStorage();
+                showNotification('✅ Identitas masjid berhasil diupdate!');
         };
 
         // Update display functions
         function updateInfoDisplay() {
             const infoDiv = document.getElementById('info-masjid-display');
-            infoDiv.innerHTML = `
+            const items = [];
+            if (infoVisibilityConfig.capacity && infoMasjidData.capacity) items.push({ label: 'Kapasitas', value: infoMasjidData.capacity });
+            if (infoVisibilityConfig.facilities && infoMasjidData.facilities) items.push({ label: 'Fasilitas', value: infoMasjidData.facilities });
+            if (infoVisibilityConfig.iqomah && infoMasjidData.iqomah) items.push({ label: 'Iqomah', value: infoMasjidData.iqomah });
+            if (infoVisibilityConfig.contact && infoMasjidData.contact) items.push({ label: 'Kontak', value: infoMasjidData.contact });
+            if (infoVisibilityConfig.ramadhan && infoMasjidData.ramadhan) items.push({ label: 'Info Ramadhan/Raya', value: infoMasjidData.ramadhan });
+            if (infoVisibilityConfig.qurban && infoMasjidData.qurban) items.push({ label: 'Info Qurban', value: infoMasjidData.qurban });
+            if (infoVisibilityConfig.rekening && infoMasjidData.rekening) items.push({ label: 'No. Rekening', value: infoMasjidData.rekening });
+            if (infoAutoRotate && items.length > 0) {
+                const idx = items.length > 0 ? (infoRotateIndex % items.length) : 0;
+                const item = items[idx];
+                infoDiv.innerHTML = `
+                    <div style="background: rgba(212, 175, 55, 0.1); padding: 6px; border-radius: 6px; border-left: 3px solid #d4af37;">
+                        <div style="opacity: 0.8; font-size: 15px; font-weight: 600; margin-bottom: 2px;">${item.label}</div>
+                        <div style="font-weight: 700; font-size: 14px;">${item.value}</div>
+                    </div>
+                `;
+                return;
+            }
+            infoDiv.innerHTML = items.map(item => `
                 <div style="background: rgba(212, 175, 55, 0.1); padding: 6px; border-radius: 6px; border-left: 3px solid #d4af37;">
-                    <div style="opacity: 0.8; font-size: 15px; font-weight: 600; margin-bottom: 2px;">Kapasitas</div>
-                    <div style="font-weight: 700; font-size: 14px;">${infoMasjidData.capacity}</div>
+                    <div style="opacity: 0.8; font-size: 15px; font-weight: 600; margin-bottom: 2px;">${item.label}</div>
+                    <div style="font-weight: 700; font-size: 14px;">${item.value}</div>
                 </div>
-                <div style="background: rgba(212, 175, 55, 0.1); padding: 6px; border-radius: 6px; border-left: 3px solid #d4af37;">
-                    <div style="opacity: 0.8; font-size: 15px; font-weight: 600; margin-bottom: 2px;">Fasilitas</div>
-                    <div style="font-weight: 700; font-size: 14px;">${infoMasjidData.facilities}</div>
-                </div>
-                <div style="background: rgba(212, 175, 55, 0.1); padding: 6px; border-radius: 6px; border-left: 3px solid #d4af37;">
-                    <div style="opacity: 0.8; font-size: 15px; font-weight: 600; margin-bottom: 2px;">Kontak</div>
-                    <div style="font-weight: 700; font-size: 14px;">${infoMasjidData.contact}</div>
-                </div>
-                <div style="background: rgba(212, 175, 55, 0.1); padding: 6px; border-radius: 6px; border-left: 3px solid #d4af37;">
-                    <div style="opacity: 0.8; font-size: 15px; font-weight: 600; margin-bottom: 2px;">Info Ramadhan/Raya</div>
-                    <div style="font-weight: 700; font-size: 14px;">${infoMasjidData.ramadhan}</div>
-                </div>
-                <div style="background: rgba(212, 175, 55, 0.1); padding: 6px; border-radius: 6px; border-left: 3px solid #d4af37;">
-                    <div style="opacity: 0.8; font-size: 15px; font-weight: 600; margin-bottom: 2px;">Info Qurban</div>
-                    <div style="font-weight: 700; font-size: 14px;">${infoMasjidData.qurban}</div>
-                </div>
-                <div style="background: rgba(212, 175, 55, 0.1); padding: 6px; border-radius: 6px; border-left: 3px solid #d4af37;">
-                    <div style="opacity: 0.8; font-size: 15px; font-weight: 600; margin-bottom: 2px;">No. Rekening</div>
-                    <div style="font-weight: 700; font-size: 14px;">${infoMasjidData.rekening}</div>
-                </div>
-            `;
+            `).join('');
+        }
+
+        function startInfoRotation() {
+            if (infoRotateTimer) {
+                clearInterval(infoRotateTimer);
+                infoRotateTimer = null;
+            }
+            const keys = Object.keys(infoVisibilityConfig).filter(k => infoVisibilityConfig[k]);
+            if (keys.length <= 1) {
+                updateInfoDisplay();
+                return;
+            }
+            updateInfoDisplay();
+            infoRotateTimer = setInterval(() => {
+                const activeKeys = Object.keys(infoVisibilityConfig).filter(k => infoVisibilityConfig[k]);
+                if (activeKeys.length === 0) {
+                    infoRotateIndex = 0;
+                    updateInfoDisplay();
+                    return;
+                }
+                infoRotateIndex = (infoRotateIndex + 1) % activeKeys.length;
+                updateInfoDisplay();
+            }, Math.max(1, parseInt(infoRotateIntervalSec)) * 1000);
+        }
+
+        function stopInfoRotation() {
+            if (infoRotateTimer) {
+                clearInterval(infoRotateTimer);
+                infoRotateTimer = null;
+            }
         }
 
         function updateDonaturDisplay() {
             const tbody = document.getElementById('donatur-table');
-            tbody.innerHTML = donatorsData.map(d => `
+            const scrollContent = document.getElementById('donatur-scroll-content');
+            
+            // Check if we need scrolling (more than 5 entries)
+            const shouldScroll = donatorsData.length > 5;
+            
+            // If scrolling, we duplicate the data to create seamless loop
+            const displayData = shouldScroll ? [...donatorsData, ...donatorsData] : donatorsData;
+            
+            tbody.innerHTML = displayData.map(d => `
                 <tr class="table-row">
-                    <td style="padding: 4px;">${d.name}</td>
-                    <td style="padding: 4px; text-align: right; font-weight: 600;">Rp ${d.amount}</td>
+                    <td style="padding: 4px; width: 65%;">${d.name}</td>
+                    <td style="padding: 4px; text-align: right; font-weight: 600; width: 35%;">Rp ${d.amount}</td>
                 </tr>
             `).join('');
+            
+            if (scrollContent) {
+                if (shouldScroll) {
+                    scrollContent.classList.add('scroll-active');
+                    // Adjust speed: 2.5 seconds per item seems reasonable
+                    const duration = donatorsData.length * 2.5; 
+                    scrollContent.style.animationDuration = `${duration}s`;
+                } else {
+                    scrollContent.classList.remove('scroll-active');
+                    scrollContent.style.animationDuration = '0s';
+                    scrollContent.style.transform = 'translateY(0)';
+                }
+            }
         }
 
         function updateFinanceDisplay() {
             const tbody = document.getElementById('finance-table');
             const balance = parseFloat(financeData.income.replace(/\./g, '')) - parseFloat(financeData.expense.replace(/\./g, ''));
-            tbody.innerHTML = `
+            const content = `
                 <tr class="table-row">
-                    <td style="padding: 4px;">Pemasukan Hari Ini / Mingguan</td>
-                    <td style="padding: 4px; text-align: right; font-weight: 600; color: #4ade80;">Rp ${financeData.todayIncome} / Rp ${financeData.weeklyIncome}</td>
+                    <td style="padding: 4px;">Pemasukan Hari Ini</td>
+                    <td style="padding: 4px; text-align: right; font-weight: 600; color: #4ade80;">Rp ${financeData.todayIncome}</td>
+                </tr>
+                <tr class="table-row">
+                    <td style="padding: 4px;">Pemasukan Mingguan</td>
+                    <td style="padding: 4px; text-align: right; font-weight: 600; color: #4ade80;">Rp ${financeData.weeklyIncome}</td>
+                </tr>
+                <tr class="table-row">
+                    <td style="padding: 4px;">Pemasukan Jumat Lalu</td>
+                    <td style="padding: 4px; text-align: right; font-weight: 600; color: #4ade80;">Rp ${financeData.fridayIncome}</td>
                 </tr>
                 <tr class="table-row">
                     <td style="padding: 4px;">Penerimaan</td>
@@ -2265,10 +3158,38 @@
                     <td style="padding: 4px; text-align: right; font-weight: 600; color: #f87171;">Rp ${financeData.lastExpense}</td>
                 </tr>
                 <tr style="border-top: 2px solid #d4af37;">
-                    <td style="padding: 4px; font-weight: 700;">Saldo</td>
+                    <td style="padding: 4px; font-weight: 700;">Saldo Saat Ini</td>
                     <td style="padding: 4px; text-align: right; font-weight: 700; color: #d4af37;">Rp ${balance.toLocaleString('id-ID')}</td>
                 </tr>
             `;
+            
+            tbody.innerHTML = content;
+
+            // Scroll Logic
+            const scrollContainer = document.getElementById('finance-scroll-container');
+            const scrollContent = document.getElementById('finance-scroll-content');
+            
+            if (scrollContainer && scrollContent) {
+                // Reset to measure
+                scrollContent.classList.remove('scroll-active');
+                scrollContent.style.animationDuration = '0s';
+                scrollContent.style.transform = 'translateY(0)';
+                
+                // Force layout update to ensure correct height measurement
+                void scrollContent.offsetWidth;
+
+                const contentHeight = scrollContent.scrollHeight;
+                const containerHeight = scrollContainer.clientHeight;
+                
+                // Enable scroll if content overflows
+                if (contentHeight > containerHeight) {
+                    tbody.innerHTML = content + content; // Duplicate for seamless loop
+                    scrollContent.classList.add('scroll-active');
+                    // Calculate duration: ~20px/s speed
+                    const duration = contentHeight / 20; 
+                    scrollContent.style.animationDuration = `${Math.max(duration, 5)}s`;
+                }
+            }
         }
 
         function updateOfficersDisplay() {
@@ -2290,5 +3211,147 @@
             setTimeout(() => notif.remove(), 3000);
         }
     </script>
- <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9b5d36fb8503893c',t:'MTc2NzA1MjM4NS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+    <script>
+        // Ensure DOM is fully loaded before running initialization logic
+        document.addEventListener('DOMContentLoaded', () => {
+            // Initialize Display
+            updateClock();
+            updateCountdown();
+            renderPrayerCards();
+            updateTakmirDisplay();
+            updateAnnouncementDisplay();
+            updateInfoDisplay();
+            updateDonaturDisplay();
+            updateFinanceDisplay();
+            updateOfficersDisplay();
+            updateAllTransparency();
+            if (infoAutoRotate) {
+                startInfoRotation();
+            }
+            
+            // Start Clock Interval
+            setInterval(() => {
+                try {
+                    updateClock();
+                    updateCountdown();
+                    renderPrayerCards();
+                } catch (err) {
+                    console.error("Error in main interval:", err);
+                }
+            }, 1000);
+        });
+    </script>
+    <script>
+        // --- ACTIVATION LOGIC ---
+        const ACTIVATION_STORE_KEY = 'al_majid_client_config';
+        let clientConfig = null;
+
+        function checkActivation() {
+            const stored = localStorage.getItem(ACTIVATION_STORE_KEY);
+            const activationScreen = document.getElementById('activation-screen');
+            
+            if (stored) {
+                try {
+                    clientConfig = JSON.parse(stored);
+                    
+                    // Check expiry if exists
+                    if (clientConfig.expiryDate && new Date(clientConfig.expiryDate) < new Date()) {
+                        alert("Masa berlaku aktivasi telah habis. Silakan aktivasi ulang.");
+                        localStorage.removeItem(ACTIVATION_STORE_KEY);
+                        activationScreen.classList.remove('hidden');
+                    } else if (clientConfig.status === 'BLOCKED') {
+                        alert("Perangkat ini telah diblokir.");
+                        activationScreen.classList.remove('hidden');
+                    } else {
+                        // Valid activation
+                        activationScreen.classList.add('hidden');
+                        
+                        // Update mosque name if available in config
+                        if (clientConfig.mosqueName) {
+                            const mosqueNameEl = document.getElementById('mosque-name');
+                            if (mosqueNameEl) mosqueNameEl.textContent = clientConfig.mosqueName;
+                        }
+                    }
+                } catch (e) {
+                    console.error("Activation data corrupt", e);
+                    activationScreen.classList.remove('hidden');
+                }
+            } else {
+                activationScreen.classList.remove('hidden');
+            }
+
+            // File Upload Listener
+            const fileInput = document.getElementById('act-file');
+            if (fileInput) {
+                fileInput.addEventListener('change', function(e) {
+                    const file = e.target.files[0];
+                    if (!file) return;
+                    
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        document.getElementById('act-data').value = e.target.result;
+                    };
+                    reader.readAsText(file);
+                });
+            }
+        }
+
+        window.attemptActivation = function() {
+            const codeInput = document.getElementById('act-code').value.trim().toUpperCase();
+            const dataInput = document.getElementById('act-data').value.trim();
+            const errorMsg = document.getElementById('act-error');
+
+            if (!codeInput || !dataInput) {
+                errorMsg.textContent = "Mohon lengkapi Kode dan Data Master.";
+                errorMsg.style.display = 'block';
+                return;
+            }
+
+            try {
+                // Parse Master Data
+                const masterData = JSON.parse(dataInput);
+                
+                // Find Code
+                if (!Array.isArray(masterData)) throw new Error("Format data salah");
+                
+                const found = masterData.find(item => item.code === codeInput);
+
+                if (found) {
+                    if (found.status !== 'ACTIVE') {
+                        errorMsg.textContent = "Kode ini statusnya NONAKTIF/BLOKIR.";
+                        errorMsg.style.display = 'block';
+                        return;
+                    }
+
+                    // Success! Save only relevant data
+                    const configToSave = {
+                        code: found.code,
+                        mosqueName: found.mosqueName,
+                        expiryDate: found.expiryDate,
+                        activatedAt: new Date().toISOString(),
+                        status: 'ACTIVE'
+                    };
+
+                    localStorage.setItem(ACTIVATION_STORE_KEY, JSON.stringify(configToSave));
+                    clientConfig = configToSave;
+                    
+                    alert("Aktivasi Berhasil! Selamat Datang.");
+                    location.reload(); // Reload to apply changes cleanly
+
+                } else {
+                    errorMsg.textContent = "Kode Aktivasi tidak ditemukan dalam Data Master yang dimasukkan.";
+                    errorMsg.style.display = 'block';
+                }
+
+            } catch (e) {
+                errorMsg.textContent = "Format Data Master JSON tidak valid. Pastikan Anda upload file dari Master.";
+                errorMsg.style.display = 'block';
+                console.error(e);
+            }
+        };
+
+        // Run check on load
+        document.addEventListener('DOMContentLoaded', checkActivation);
+    </script>
+</body>
 </html>
