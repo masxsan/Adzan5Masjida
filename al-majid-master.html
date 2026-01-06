@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AL-MAJID MASTER - Generator Kode Aktivasi</title>
+    <style>
+        :root {
+            --primary: #1a4d2e;
+            --primary-dark: #143d23;
+            --accent: #d4af37;
+            --bg-light: #f3f4f6;
+            --text-dark: #1f2937;
+            --text-light: #6b7280;
+            --white: #ffffff;
+            --danger: #ef4444;
+            --success: #10b981;
+            --warning: #f59e0b;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-light);
+            color: var(--text-dark);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header */
+        header {
+            background: linear-gradient(90deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: var(--white);
+            padding: 1rem 2rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 3px solid var(--accent);
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .brand h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+
+        .brand span {
+            color: var(--accent);
+        }
+
+        /* Container */
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+            width: 100%;
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 2rem;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Cards */
+        .card {
+            background: var(--white);
+            border-radius: 0.75rem;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+            padding: 1.5rem;
+            height: fit-content;
+        }
+
+        .card-header {
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .card-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* Form Elements */
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--text-dark);
+            margin-bottom: 0.5rem;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.375rem;
+            font-size: 1rem;
+            transition: border-color 0.2s;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.1);
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 0.375rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background-color: var(--primary);
+            color: var(--white);
+            width: 100%;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--primary-dark);
+        }
+
+        .btn-outline {
+            background-color: transparent;
+            border: 1px solid var(--primary);
+            color: var(--primary);
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+        }
+
+        .btn-outline:hover {
+            background-color: rgba(26, 77, 46, 0.05);
+        }
+
+        .btn-danger {
+            background-color: transparent;
+            color: var(--danger);
+            padding: 0.25rem 0.5rem;
+            font-size: 0.875rem;
+        }
+        
+        .btn-danger:hover {
+            background-color: rgba(239, 68, 68, 0.1);
+        }
+
+        /* Generated Code Display */
+        .code-display {
+            background-color: #f8fafc;
+            border: 2px dashed var(--accent);
+            padding: 1rem;
+            text-align: center;
+            margin-bottom: 1.25rem;
+            border-radius: 0.5rem;
+            position: relative;
+        }
+
+        .code-value {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary);
+            letter-spacing: 2px;
+        }
+
+        .code-label {
+            font-size: 0.75rem;
+            color: var(--text-light);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 0.5rem;
+        }
+
+        /* Table */
+        .table-container {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+
+        th {
+            background-color: #f9fafb;
+            text-align: left;
+            padding: 0.75rem 1rem;
+            font-weight: 600;
+            color: var(--text-light);
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        td {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid #e5e7eb;
+            color: var(--text-dark);
+            vertical-align: middle;
+        }
+
+        tr:hover {
+            background-color: #f9fafb;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .status-active {
+            background-color: #d1fae5;
+            color: #065f46;
+        }
+
+        .status-inactive {
+            background-color: #fee2e2;
+            color: #991b1b;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .icon-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+            transition: background 0.2s;
+            color: var(--text-light);
+        }
+
+        .icon-btn:hover {
+            background-color: #e5e7eb;
+            color: var(--primary);
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: var(--primary);
+            color: white;
+            padding: 1rem 1.5rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            transform: translateY(150%);
+            transition: transform 0.3s ease-in-out;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .toast.show {
+            transform: translateY(0);
+        }
+
+        /* SVG Icons */
+        .icon {
+            width: 20px;
+            height: 20px;
+            fill: currentColor;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: var(--text-light);
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="brand">
+            <svg class="icon" viewBox="0 0 24 24" style="width: 32px; height: 32px;">
+                <path d="M12 2L2 7l10 5 10-5-10-5zm0 9l2.5-1.25L12 8.5l-2.5 1.25L12 11zm0 2.5l-5-2.5-5 2.5L12 22l10-8.5-5-2.5-5 2.5z"/>
+            </svg>
+            <div>
+                <h1>AL-MAJID <span>MASTER</span></h1>
+                <div style="font-size: 0.75rem; opacity: 0.8;">Offline Activation Manager</div>
+            </div>
+        </div>
+        <div>
+            <button id="btnExport" class="btn btn-outline" style="border-color: var(--accent); color: var(--accent);">
+                <svg class="icon" viewBox="0 0 20 20" style="margin-right: 5px;">
+                    <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" />
+                    <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z" />
+                </svg>
+                Export Semua Data
+            </button>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- Generator Section -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <svg class="icon" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clip-rule="evenodd" />
+                    </svg>
+                    Buat Kode Baru
+                </div>
+            </div>
+
+            <form id="generateForm">
+                <div class="code-display" id="codePreviewBox" style="display: none;">
+                    <div class="code-label">Kode Aktivasi Digenerate</div>
+                    <div class="code-value" id="generatedCodeDisplay">ALM-XXXX-XXXX</div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Nama Masjid</label>
+                    <input type="text" id="mosqueName" class="form-input" placeholder="Contoh: Masjid Al-Ikhlas" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Tanggal Dibuat</label>
+                    <input type="date" id="creationDate" class="form-input" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Masa Berlaku (Opsional)</label>
+                    <select id="validityPeriod" class="form-input">
+                        <option value="forever">Selamanya (Tidak Terbatas)</option>
+                        <option value="1">1 Tahun</option>
+                        <option value="2">2 Tahun</option>
+                        <option value="5">5 Tahun</option>
+                        <option value="custom">Custom Tanggal...</option>
+                    </select>
+                </div>
+
+                <div class="form-group" id="customDateGroup" style="display: none;">
+                    <label class="form-label">Tanggal Berakhir</label>
+                    <input type="date" id="expiryDate" class="form-input">
+                </div>
+
+                <button type="submit" class="btn btn-primary">
+                    <svg class="icon" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M5 2a1 1 0 011 1v1h1a1 1 0 010 2H6v1a1 1 0 01-2 0V6H3a1 1 0 010-2h1V3a1 1 0 011-1zm0 9a1 1 0 011 1v1h1a1 1 0 110 2H6v1a1 1 0 11-2 0v-1H3a1 1 0 110-2h1v-1a1 1 0 011-1zm7-10a1 1 0 01.707.293l3 3a1 1 0 010 1.414l-3 3a1 1 0 01-1.414-1.414L12.586 6H10a1 1 0 110-2h2.586l-1.293-1.293A1 1 0 0112 1z" clip-rule="evenodd" />
+                    </svg>
+                    Generate & Simpan Kode
+                </button>
+            </form>
+        </div>
+
+        <!-- List Section -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <svg class="icon" viewBox="0 0 20 20">
+                        <path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z" />
+                    </svg>
+                    Daftar Kode Aktivasi
+                </div>
+                <div style="font-size: 0.9rem; color: var(--text-light);">
+                    Total: <span id="totalCodes" style="font-weight: 700; color: var(--primary);">0</span>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <input type="text" id="searchInput" class="form-input" placeholder="Cari nama masjid atau kode..." style="font-size: 0.9rem; padding: 0.5rem;">
+            </div>
+
+            <div class="table-container">
+                <table id="codesTable">
+                    <thead>
+                        <tr>
+                            <th>Kode Aktivasi</th>
+                            <th>Nama Masjid</th>
+                            <th>Berlaku Sampai</th>
+                            <th>Status</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="codesTableBody">
+                        <!-- Data will be inserted here -->
+                    </tbody>
+                </table>
+                <div id="emptyState" class="empty-state">
+                    Belum ada data kode aktivasi.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast">
+        <svg class="icon" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+        </svg>
+        <span id="toastMessage">Berhasil disimpan!</span>
+    </div>
+
+    <script>
+        // --- State Management ---
+        let activationCodes = JSON.parse(localStorage.getItem('al_majid_master_codes')) || [];
+
+        // --- DOM Elements ---
+        const form = document.getElementById('generateForm');
+        const mosqueNameInput = document.getElementById('mosqueName');
+        const creationDateInput = document.getElementById('creationDate');
+        const validityPeriodSelect = document.getElementById('validityPeriod');
+        const customDateGroup = document.getElementById('customDateGroup');
+        const expiryDateInput = document.getElementById('expiryDate');
+        const codePreviewBox = document.getElementById('codePreviewBox');
+        const generatedCodeDisplay = document.getElementById('generatedCodeDisplay');
+        const tableBody = document.getElementById('codesTableBody');
+        const emptyState = document.getElementById('emptyState');
+        const totalCodesSpan = document.getElementById('totalCodes');
+        const searchInput = document.getElementById('searchInput');
+        const btnExport = document.getElementById('btnExport');
+        const toast = document.getElementById('toast');
+
+        // --- Initialization ---
+        function init() {
+            // Set default date to today
+            creationDateInput.valueAsDate = new Date();
+            renderTable();
+        }
+
+        // --- Helper Functions ---
+        function generateCode() {
+            const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // No I, O, 0, 1 to avoid confusion
+            let part1 = '';
+            let part2 = '';
+            for (let i = 0; i < 4; i++) part1 += chars.charAt(Math.floor(Math.random() * chars.length));
+            for (let i = 0; i < 4; i++) part2 += chars.charAt(Math.floor(Math.random() * chars.length));
+            return `ALM-${part1}-${part2}`;
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return 'Selamanya';
+            const options = { year: 'numeric', month: 'short', day: 'numeric' };
+            return new Date(dateString).toLocaleDateString('id-ID', options);
+        }
+
+        function showToast(message) {
+            document.getElementById('toastMessage').textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        function saveData() {
+            localStorage.setItem('al_majid_master_codes', JSON.stringify(activationCodes));
+            renderTable();
+        }
+
+        // --- Event Listeners ---
+
+        // Handle Validity Selection
+        validityPeriodSelect.addEventListener('change', (e) => {
+            if (e.target.value === 'custom') {
+                customDateGroup.style.display = 'block';
+                expiryDateInput.required = true;
+            } else {
+                customDateGroup.style.display = 'none';
+                expiryDateInput.required = false;
+            }
+        });
+
+        // Handle Form Submit (Generate)
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+
+            // Calculate Expiry
+            let expiry = null;
+            const created = new Date(creationDateInput.value);
+            const validity = validityPeriodSelect.value;
+
+            if (validity === 'custom') {
+                expiry = expiryDateInput.value;
+            } else if (validity !== 'forever') {
+                const years = parseInt(validity);
+                const expiryDate = new Date(created);
+                expiryDate.setFullYear(expiryDate.getFullYear() + years);
+                expiry = expiryDate.toISOString().split('T')[0];
+            }
+
+            // Generate Unique Code
+            let newCode;
+            let isUnique = false;
+            while (!isUnique) {
+                newCode = generateCode();
+                isUnique = !activationCodes.some(item => item.code === newCode);
+            }
+
+            // Create Object
+            const newEntry = {
+                id: Date.now().toString(),
+                code: newCode,
+                mosqueName: mosqueNameInput.value.trim(),
+                createdDate: creationDateInput.value,
+                expiryDate: expiry,
+                status: 'ACTIVE' // ACTIVE or BLOCKED
+            };
+
+            // Save
+            activationCodes.unshift(newEntry); // Add to top
+            saveData();
+
+            // UI Feedback
+            codePreviewBox.style.display = 'block';
+            generatedCodeDisplay.textContent = newCode;
+            mosqueNameInput.value = ''; // Reset name only, keep date
+            showToast(`Kode ${newCode} berhasil dibuat!`);
+        });
+
+        // Search Functionality
+        searchInput.addEventListener('input', (e) => {
+            renderTable(e.target.value);
+        });
+
+        // Export Functionality (Download JSON)
+        btnExport.addEventListener('click', () => {
+            // Reload data from storage to ensure we have latest
+            const currentData = JSON.parse(localStorage.getItem('al_majid_master_codes')) || [];
+            
+            if (currentData.length === 0) {
+                alert('Tidak ada data untuk diexport. Buat kode terlebih dahulu.');
+                return;
+            }
+
+            const dataStr = JSON.stringify(currentData, null, 2);
+            
+            // Create Blob and Download Link
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `al-majid-master-data-${new Date().toISOString().slice(0,10)}.json`;
+            document.body.appendChild(a);
+            a.click();
+            
+            // Cleanup
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showToast('File JSON berhasil didownload!');
+        });
+
+        // --- Rendering ---
+        function renderTable(filterText = '') {
+            tableBody.innerHTML = '';
+            const filter = filterText.toLowerCase();
+
+            const filteredData = activationCodes.filter(item => 
+                item.mosqueName.toLowerCase().includes(filter) || 
+                item.code.toLowerCase().includes(filter)
+            );
+
+            totalCodesSpan.textContent = filteredData.length;
+
+            if (filteredData.length === 0) {
+                emptyState.style.display = 'block';
+                return;
+            }
+            emptyState.style.display = 'none';
+
+            filteredData.forEach(item => {
+                const tr = document.createElement('tr');
+                
+                // Status Badge
+                const isActive = item.status === 'ACTIVE';
+                const statusBadge = `<span class="status-badge ${isActive ? 'status-active' : 'status-inactive'}">${isActive ? 'AKTIF' : 'BLOKIR'}</span>`;
+                
+                // Expiry Text
+                let expiryText = formatDate(item.expiryDate);
+                // Check if expired
+                if (item.expiryDate && new Date(item.expiryDate) < new Date()) {
+                    expiryText += ' <span style="color:red; font-size:0.8em;">(Expired)</span>';
+                }
+
+                tr.innerHTML = `
+                    <td style="font-family: monospace; font-weight: 600; letter-spacing: 1px;">${item.code}</td>
+                    <td style="font-weight: 500;">${item.mosqueName}</td>
+                    <td>${expiryText}</td>
+                    <td>${statusBadge}</td>
+                    <td>
+                        <div class="action-buttons">
+                            <button class="icon-btn" onclick="copyCode('${item.code}')" title="Salin Kode">
+                                <svg class="icon" viewBox="0 0 20 20"><path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" /><path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z" /></svg>
+                            </button>
+                            <button class="icon-btn" onclick="toggleStatus('${item.id}')" title="${isActive ? 'Nonaktifkan' : 'Aktifkan'}" style="color: ${isActive ? 'var(--danger)' : 'var(--success)'}">
+                                ${isActive ? 
+                                    '<svg class="icon" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M13.477 14.89A6 6 0 015.11 6.524l8.367 8.368zm1.414-1.414L6.524 5.11a6 6 0 018.367 8.367zM18 10a8 8 0 11-16 0 8 8 0 0116 0z" clip-rule="evenodd" /></svg>' : 
+                                    '<svg class="icon" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>'
+                                }
+                            </button>
+                            <button class="icon-btn" onclick="deleteCode('${item.id}')" title="Hapus Permanen" style="color: #9ca3af;">
+                                <svg class="icon" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
+                            </button>
+                        </div>
+                    </td>
+                `;
+                tableBody.appendChild(tr);
+            });
+        }
+
+        // --- Global Actions (exposed to window) ---
+        window.copyCode = function(code) {
+            navigator.clipboard.writeText(code).then(() => {
+                showToast(`Kode ${code} disalin!`);
+            });
+        };
+
+        window.toggleStatus = function(id) {
+            const index = activationCodes.findIndex(item => item.id === id);
+            if (index !== -1) {
+                activationCodes[index].status = activationCodes[index].status === 'ACTIVE' ? 'BLOCKED' : 'ACTIVE';
+                saveData();
+                showToast(`Status kode berhasil diubah.`);
+            }
+        };
+
+        window.deleteCode = function(id) {
+            if(confirm('Apakah Anda yakin ingin menghapus data ini secara permanen?')) {
+                activationCodes = activationCodes.filter(item => item.id !== id);
+                saveData();
+                showToast('Data berhasil dihapus.');
+            }
+        };
+
+        // Initialize App
+        init();
+
+    </script>
+</body>
+</html>
