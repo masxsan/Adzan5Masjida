@@ -175,6 +175,11 @@
             <div id="act-error" class="error-msg">Kode tidak valid atau tidak ditemukan di data master.</div>
 
             <button onclick="attemptActivation()" class="btn-activate">AKTIFKAN PERANGKAT</button>
+
+            <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #eee; font-size: 0.9rem; color: #666;">
+                Belum punya kode? Hubungi:<br>
+                <span style="font-weight: 700; color: #1a4d2e; font-size: 1.1rem;">0813-3176-9348</span>
+            </div>
         </div>
     </div>
  <div id="main-container" class="h-full w-full gradient-bg text-white overflow-auto" style="height: 100vh; display: grid; grid-template-rows: 14vh 12vh calc(50vh + 1cm) calc(24vh - 1cm); overflow: hidden;"><!-- Header Banner -->
@@ -593,6 +598,14 @@
 
         function loadFromLocalStorage() {
             try {
+                // First check activation config to enforce mosque identity
+                const activationStored = localStorage.getItem(ACTIVATION_STORE_KEY);
+                if (activationStored) {
+                    const clientConfig = JSON.parse(activationStored);
+                    if (clientConfig.mosqueName) currentMosqueName = clientConfig.mosqueName;
+                    if (clientConfig.mosqueAddress) currentMosqueAddress = clientConfig.mosqueAddress;
+                }
+
                 const savedData = localStorage.getItem(STORAGE_KEY);
                 if (savedData) {
                     const parsed = JSON.parse(savedData);
@@ -609,8 +622,12 @@
                     if(parsed.slideshowData) slideshowData = parsed.slideshowData;
                     if(parsed.backgroundSettings) backgroundSettings = parsed.backgroundSettings;
                     
-                    if(parsed.currentMosqueName) currentMosqueName = parsed.currentMosqueName;
-                    if(parsed.currentMosqueAddress) currentMosqueAddress = parsed.currentMosqueAddress;
+                    // Restore only if NOT locked by activation
+                    if (!activationStored) {
+                        if(parsed.currentMosqueName) currentMosqueName = parsed.currentMosqueName;
+                        if(parsed.currentMosqueAddress) currentMosqueAddress = parsed.currentMosqueAddress;
+                    }
+
                     if(parsed.currentAnnouncement) currentAnnouncement = parsed.currentAnnouncement;
                     if(parsed.announcementMode) announcementMode = parsed.announcementMode;
                     
@@ -635,6 +652,11 @@
                         prayerScheduleData = JSON.parse(legacySchedule);
                     }
                 }
+                
+                // Update DOM immediately
+                document.getElementById('mosque-name').textContent = currentMosqueName;
+                document.getElementById('mosque-address').textContent = currentMosqueAddress;
+
             } catch (e) {
                 console.error('Failed to load data:', e);
             }
@@ -3271,6 +3293,12 @@
                             const mosqueNameEl = document.getElementById('mosque-name');
                             if (mosqueNameEl) mosqueNameEl.textContent = clientConfig.mosqueName;
                         }
+                        
+                        // Update mosque address if available in config
+                        if (clientConfig.mosqueAddress) {
+                            const mosqueAddressEl = document.getElementById('mosque-address');
+                            if (mosqueAddressEl) mosqueAddressEl.textContent = clientConfig.mosqueAddress;
+                        }
                     }
                 } catch (e) {
                     console.error("Activation data corrupt", e);
@@ -3327,6 +3355,7 @@
                     const configToSave = {
                         code: found.code,
                         mosqueName: found.mosqueName,
+                        mosqueAddress: found.mosqueAddress, // Save address
                         expiryDate: found.expiryDate,
                         activatedAt: new Date().toISOString(),
                         status: 'ACTIVE'
